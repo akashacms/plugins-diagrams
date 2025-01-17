@@ -1,0 +1,21 @@
+{
+  "name": "@akashacms/plugins-diagrams",
+  "version": "0.9.0",
+  "description": "Process PlantUML diagrams and embed as SVG",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akashacms/plugins-diagrams.git"
+  },
+  "keywords": [],
+  "author": "David Herron <david@davidherron.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/akashacms/plugins-diagrams/issues"
+  },
+  "homepage": "https://github.com/akashacms/plugins-diagrams#readme"
+}
