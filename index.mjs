@@ -43,7 +43,7 @@ class PlantUMLLocal extends mahabhuta.PageProcessor {
 
             const body  = $(this).html();
 
-            console.log({ body });
+            // console.log({ body });
 
             const plantumlJar = path.join(
                 __dirname,
