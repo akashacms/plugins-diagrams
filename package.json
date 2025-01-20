@@ -1,11 +1,16 @@
 {
-  "name": "@akashacms/plugins-diagrams",
+  "name": "@akashacms/diagram-maker",
   "version": "0.9.0",
-  "description": "Process PlantUML diagrams and embed as SVG",
-  "main": "index.mjs",
+  "description": "Process PlantUML diagrams into SVG, PNG",
+  "bin": {
+    "diagram-maker": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npx tsc",
+    "watch": "npx tsc -w"
   },
   "repository": {
     "type": "git",
@@ -17,5 +22,16 @@
   "bugs": {
     "url": "https://github.com/akashacms/plugins-diagrams/issues"
   },
-  "homepage": "https://github.com/akashacms/plugins-diagrams#readme"
+  "homepage": "https://github.com/akashacms/plugins-diagrams#readme",
+  "dependencies": {
+    "commander": "^13.0.0",
+    "html-entities": "^2.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3"
+  },
+  "peerDependencies": {
+    "akasharender": "^0.9.1"
+  }
 }
