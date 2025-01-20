@@ -35,13 +35,12 @@ export class DiagramsPlugin extends Plugin {
 
     configure(config, options) {
         this.#config = config;
-        this.options(options); // ? options : {};
+        super.options = options; // ? options : {};
         options.config = config;
         config.addMahabhuta(mahabhutaArray(options));
     }
 
     get config() { return this.#config; }
-    get options() { return this.options; }
 }
 
 export function mahabhutaArray(options) {
@@ -394,7 +393,8 @@ class PlantUMLLocal extends mahabhuta.CustomElement {
     async process($element, metadata, dirty: Function) {
 
         const options: doPlantUMLOptions = {
-            inputBody: $element.html(),
+            // Using .text() eliminates HTML formatting.
+            inputBody: $element.text(),
             inputFNs: undefined,
             outputFN: $element.attr('output-file')
         };
@@ -481,19 +481,19 @@ class PlantUMLLocal extends mahabhuta.CustomElement {
         const caption = $element.attr('caption');
         const cs = $element.attr('charset');
         if (isValidCharset(cs)) options.charset = cs;
-        options.darkmode = $element.prop('darkmode');
+        options.darkmode = typeof $element.prop('darkmode') !== 'undefined';
         // options.debugsvek = $element.prop('debugsvek');
         // options.fileNameOverride = $element.attr('filename');
         const nbthread = $element.attr('nbthread');
         if (typeof nbthread === 'string') options.nbthread = nbthread;
-        options.nometadata = $element.prop('nometadata');
+        options.nometadata = typeof $element.prop('nometadata') !== 'undefined';
         // options.teps = $element.prop('teps');
         // options.thtml = $element.prop('thtml');
         // options.tlatex = $element.prop('tlatex');
         // options.tpdf = $element.prop('tpdf');
-        options.tpng = $element.prop('tpng');
+        options.tpng = typeof $element.prop('tpng') !== 'undefined';
         // options.tscxml = $element.prop('tscxml');
-        options.tsvg = $element.prop('tsvg');
+        options.tsvg = typeof $element.prop('tsvg') !== 'undefined';
         // options.ttxt = $element.prop('ttxt');
         // options.tutxt = $element.prop('tutxt');
         // options.tvdx = $element.prop('tvdx');

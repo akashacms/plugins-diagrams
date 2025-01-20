@@ -5,7 +5,6 @@ export declare class DiagramsPlugin extends Plugin {
     constructor();
     configure(config: any, options: any): void;
     get config(): any;
-    get options(): any;
 }
 export declare function mahabhutaArray(options: any): akasha.mahabhuta.MahafuncArray;
 /**
