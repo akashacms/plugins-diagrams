@@ -315,9 +315,9 @@ export async function doPlantUMLLocal(options) {
 
     // Now that the command args and spawnopts are set up
     // run the command
-    console.log({
-        spawnopts, args
-    });
+    // console.log({
+    //     spawnopts, args
+    // });
     const child = spawn('java', args, spawnopts);
 
     // Next, set up stdin/stdout pipes in case
