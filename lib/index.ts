@@ -523,7 +523,7 @@ class PlantUMLLocal extends mahabhuta.CustomElement {
         const Tclazz = typeof clazz === 'string'
             ? `class="${encode(clazz)}`
             : '';
-        // TODO ensure outputFN is vpath relative to root
+
         return `
         <figure ${Tid} ${Tclazz}>
         <img src="${encode(vpathOut)}" ${Talt} ${Ttitle}/>

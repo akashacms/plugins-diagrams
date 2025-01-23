@@ -2,21 +2,21 @@
 
 Process PlantUML diagrams and either convert into an output file, or embed as HTML in a document.
 
-Diagrams are rendered locally using a copy of `plantuml.jar`, specifically the version released under the MIT license.
+Diagrams are rendered locally using a copy of `plantuml.jar`, specifically the version released under the MIT license.  By using the JAR file, you are not reliant on an external server.
 
 **NOTE**: This package requires the Java runtime to be installed on your machine and in your path.  You can test this by running `java --help` at the command line.
+
+**NOTE**: It was intended that this package also support Mermaid and KaTeX.  Those who are interested (or not) should see [the issue queue entry](https://github.com/akashacms/plugins-diagrams/issues/7) for this task.
 
 ## INSTALL
 
 In an AkashaCMS project directory:
 
 ```shell
-$ npm install @akashacms/plugins-diagrams --save
+$ npm install @akashacms/diagram-makers --save
 ```
 
 ## Configuration
-
-TODO - Fix the import specifier
 
 In the AkashaCMS configuration file add this:
 
@@ -111,10 +111,10 @@ await doPlantUMLLocal({
     `,
   outputFN: '/path/to/destination/diagram.png',
   tpng: true
-});
+} as doPlantUMLOptions);
 ```
 
-This converts an inline diagram into a PNG file at the named filesystem location.
+This converts an inline diagram into a PNG file at the named filesystem location.  The structure of the _options_ parameter is described by `doPlantUMLOptions`.
 
 The `inputFNs` is an array treated similarly to the `--input-file` parameter for the CLI.
 
