@@ -1,7 +1,7 @@
 {
   "name": "@akashacms/diagram-maker",
   "version": "0.9.0",
-  "description": "Process PlantUML diagrams into SVG, PNG",
+  "description": "Process PlantUML diagrams into SVG, PNG, as well as AkashaCMS integration",
   "bin": {
     "diagram-maker": "dist/cli.js"
   },
@@ -10,13 +10,17 @@
   "type": "module",
   "scripts": {
     "build": "npx tsc",
-    "watch": "npx tsc -w"
+    "watch": "npx tsc -w",
+    "dopublish": "npm publish --access public"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/akashacms/plugins-diagrams.git"
   },
-  "keywords": [],
+  "keywords": [
+    "PlantUML", "Markdown", "Static Content Management System",
+    "AkashaCMS"
+  ],
   "author": "David Herron <david@davidherron.com>",
   "license": "ISC",
   "bugs": {
