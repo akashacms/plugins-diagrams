@@ -1,4 +1,4 @@
-# @akashacms/diagram-maker
+# @akashacms/diagrams-maker
 
 Process PlantUML diagrams and either convert into an output file, or embed as HTML in a document.
 
@@ -13,7 +13,7 @@ Diagrams are rendered locally using a copy of `plantuml.jar`, specifically the v
 In an AkashaCMS project directory:
 
 ```shell
-$ npm install @akashacms/diagram-makers --save
+$ npm install @akashacms/diagrams-maker --save
 ```
 
 ## Configuration
@@ -24,9 +24,9 @@ In the AkashaCMS configuration file add this:
 // CJS modules - would require import() - untested
 // In Node.js 24, require(ESM MODULE) is supposed to work
 // Something like this:
-const DiagramsPlugin = await import('@akashacms/plugins-diagrams');
+const DiagramsPlugin = await import('@akashacms/diagrams-maker');
 // ESM modules
-import { DiagramsPlugin } from '@akashacms/plugins-diagrams';
+import { DiagramsPlugin } from '@akashacms/diagrams-maker';
 
 /// In the section where plugins are being added:
 
@@ -38,7 +38,7 @@ config.use(DiagramsPlugin);
 The package includes a CLI tool with the following synopsis:
 
 ```shell
-Usage: npx document-maker plantuml [options]
+Usage: npx diagrams-maker plantuml [options]
 
 Render PlantUML files
 
@@ -74,7 +74,7 @@ Most of these options correspond directly to the CLI arguments for `plantuml.jar
 One mode is a single input file, and a single output file:
 
 ```shell
-$ npx diagram-maker plantuml \
+$ npx diagrams-maker plantuml \
       --input-file flight.puml \
       --output-file flight.png  \
       --tpng
@@ -85,7 +85,7 @@ This converts the PlantUML diagram in the named file into a PNG.
 The `--input-file` parameter can be used multiple times.  In that case, the parameters are treated as the `[file/dir] [file/dir] [file/dir]` parameters for `plantuml.jar`.  The `--output-file` parameter, if given, is ignored in this case.  You may use the `--output-dir` parameter to affect where the files land.
 
 ```shell
-$ npx diagram-maker plantuml \
+$ npx diagrams-maker plantuml \
     --input-file file1.puml --input-file dir/with/diagrams \
     --output-dir out
     --tpng
@@ -101,7 +101,7 @@ This will search for PlantUML documents in the named files or directories, gener
 The `diagram-maker` package exports an API providing similar functionality.
 
 ```js
-import { doPlantUMLOptions, doPlantUMLLocal } from 'diagram-maker';
+import { doPlantUMLOptions, doPlantUMLLocal } from '@akashacms/diagrams-maker';
 
 await doPlantUMLLocal({
   inputBody: `
@@ -126,12 +126,12 @@ There are three modes for treating inputs and outputs:
 
 ## Usage - AkashaCMS project
 
-The `diagram-makers` package includes an AkashaCMS plugin.
+The `@akashacms/diagrams-makers` package includes an AkashaCMS plugin.
 
 Setup, configuration:
 
 ```js
-import { DiagramsPlugin } from 'diagram-makers';
+import { DiagramsPlugin } from '@akashacms/diagrams-makers';
 
 config.use(DiagramsPlugin);
 ```
