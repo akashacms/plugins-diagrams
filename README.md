@@ -16,23 +16,6 @@ In an AkashaCMS project directory:
 $ npm install @akashacms/diagrams-maker --save
 ```
 
-## Configuration
-
-In the AkashaCMS configuration file add this:
-
-```js
-// CJS modules - would require import() - untested
-// In Node.js 24, require(ESM MODULE) is supposed to work
-// Something like this:
-const DiagramsPlugin = await import('@akashacms/diagrams-maker');
-// ESM modules
-import { DiagramsPlugin } from '@akashacms/diagrams-maker';
-
-/// In the section where plugins are being added:
-
-config.use(DiagramsPlugin);
-```
-
 ## Usage - CLI -- PlantUML
 
 The package includes a CLI tool with the following synopsis:

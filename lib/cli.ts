@@ -8,7 +8,7 @@ import util from 'node:util';
 
 // import packageConfig from '../package.json' with { type: 'json' }; 
 
-import { doPlantUMLOptions, doPlantUMLLocal, isValidCharset } from './index.js';
+import { doPlantUMLOptions, doPlantUMLLocal, isValidCharset, PintoraRenderOptions, doPintora } from './index.js';
 
 import { Command } from 'commander';
 const program = new Command();
@@ -230,6 +230,69 @@ program
         })
 
         await doPlantUMLLocal(options);
+    });
+
+program
+    .command('pintora')
+    .description('Render Pintora files')
+    .option('--input-file <inputFN>', 'Path for document to render')
+    .option('--output-file <outputFN>', 'Path for rendered document')
+    .option('--pixel-ratio <ratio>', '')
+    .option('--mime-type <mt>', 'MIME type for output file')
+    .option('--bg-color <color>', 'String describing background color')
+    .option('--width <number>', 'Width of the output, height will be calculated according to the diagram content ratio')
+    .action(async (cmdObj) => {
+        const opts: PintoraRenderOptions = {
+            code: '',
+            outputFN: ''
+        };
+
+        if (typeof cmdObj.inputFile === 'string') {
+            opts.code = await fsp.readFile(cmdObj.inputFile, 'utf-8');
+        } else {
+            throw new Error('No input file specified');
+        }
+
+        if (typeof cmdObj.outputFile === 'string') {
+            opts.outputFN = cmdObj.outputFile;
+        } else {
+            throw new Error('No output file specified');
+        }
+
+        if (typeof cmdObj.pixelRatio === 'string') {
+            opts.devicePixelRatio = Number.parseFloat(cmdObj.pixelRatio);
+        }
+        if (typeof opts.devicePixelRatio !== 'undefined'
+         && isNaN(opts.devicePixelRatio)) {
+            throw new Error(`Invalid device pixel ratio ${util.inspect(cmdObj.pixelRatio)}`);
+        }
+
+        if (typeof cmdObj.mimeType === 'string') {
+            if (
+                cmdObj.mimeType === 'image/svg+xml'
+             || cmdObj.mimeType === 'image/jpeg'
+             || cmdObj.mimeType === 'image/png'
+            ) {
+                opts.mimeType = cmdObj.mimeType;
+            } else {
+                throw new Error(`Invalid MIME type ${util.inspect(cmdObj.mimeType)}`);
+            }
+        }
+
+        if (typeof cmdObj.bgColor === 'string') {
+            opts.backgroundColor = cmdObj.bgColor;
+        }
+
+        if (typeof cmdObj.width === 'string') {
+            opts.width = Number.parseFloat(cmdObj.width);
+            if (isNaN(opts.width)) {
+                throw new Error(`diagrams-pintora: width is not a number ${cmdObj.width}`);
+            }
+        }
+
+        opts.renderInSubprocess = false;
+
+        await doPintora(opts);
     });
 
 

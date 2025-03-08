@@ -18,7 +18,9 @@
     "url": "git+https://github.com/akashacms/plugins-diagrams.git"
   },
   "keywords": [
-    "PlantUML", "Markdown", "Static Content Management System",
+    "PlantUML",
+    "Markdown",
+    "Static Content Management System",
     "AkashaCMS"
   ],
   "author": "David Herron <david@davidherron.com>",
@@ -28,6 +30,7 @@
   },
   "homepage": "https://github.com/akashacms/plugins-diagrams#readme",
   "dependencies": {
+    "@pintora/cli": "^0.7.6",
     "commander": "^13.0.0",
     "html-entities": "^2.5.2"
   },

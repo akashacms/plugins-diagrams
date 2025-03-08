@@ -5,6 +5,7 @@ import fs, { promises as fsp } from 'node:fs';
 import util from 'node:util';
 import { execSync, spawnSync, spawn } from 'node:child_process';
 import {encode} from 'html-entities';
+import { render, PintoraConfig } from '@pintora/cli'
 
 const __dirname = import.meta.dirname;
 
@@ -21,9 +22,6 @@ const pluginName = '@akashacms/plugins-diagrams';
 import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
 const mahabhuta = akasha.mahabhuta;
-
-const _plugin_config = Symbol('config');
-const _plugin_options = Symbol('options');
 
 export class DiagramsPlugin extends Plugin {
 
@@ -46,8 +44,177 @@ export class DiagramsPlugin extends Plugin {
 export function mahabhutaArray(options) {
     let ret = new mahabhuta.MahafuncArray(pluginName, options);
     ret.addMahafunc(new PlantUMLLocal());
+    ret.addMahafunc(new PintoraLocal());
     return ret;
 };
+
+export type PintoraRenderOptions = {
+    /**
+     * pintora DSL code to render
+     */
+    code: string
+    devicePixelRatio?: number | null
+    /**
+     * Type for the output file
+     * 
+    // image/svg+xml
+    // image/jpeg
+    // image/png
+     */
+    mimeType?: string
+    /**
+     * Assign extra background color
+     */
+    backgroundColor?: string
+    pintoraConfig?: Partial<PintoraConfig>
+    /**
+     * width of the output, height will be calculated according to the diagram content ratio
+     */
+    width?: number
+    /**
+     * Whether we should run render in a subprocess rather in current process.
+     * If you call the `render` function, by default this is true, to avoid polluting the global environment.
+     */
+    renderInSubprocess?: boolean
+
+    outputFN: string;
+};
+
+export async function doPintora(
+    options: PintoraRenderOptions
+): Promise<void> {
+    const renderOpts = structuredClone(options);
+    delete renderOpts.outputFN;
+
+    const buf = await render(renderOpts);
+
+    if (options.outputFN) {
+        await fsp.writeFile(options.outputFN, buf);
+    } else {
+        throw new Error(`No output file FN ${util.inspect(options)}`);
+    }
+}
+
+class PintoraLocal extends mahabhuta.CustomElement {
+	get elementName() { return "diagrams-pintora"; }
+
+    async process($element, metadata, dirty: Function) {
+        const options: PintoraRenderOptions = {
+            code: $element.text(),
+            outputFN: $element.attr('output-file')
+        };
+
+        const inf =  $element.attr('input-file');
+        if (typeof inf === 'string') {
+            if (typeof options.code === 'string'
+             && options.code.length >= 1
+            ) {
+                throw new Error(`diagrams-pintora - either specify input-file OR a diagram body, not both`);
+            }
+            options.code = await fsp.readFile(inf, 'utf-8');
+        }
+
+        if (typeof options.outputFN !== 'string'
+         || options.outputFN.length < 1
+        ) {
+            throw new Error(`diagrams-pintora must have output-file`);
+        }
+
+        const pxr = $element.attr('pixel-ratio');
+        if (typeof pxr === 'string'
+         && pxr.length >= 1
+        ) {
+            const r = Number.parseFloat(pxr);
+            if (isNaN(r)) {
+                throw new Error(`diagrams-pintora: pixel-ratio is not a number ${pxr}`);
+            }
+            options.devicePixelRatio = r;
+        }
+
+        const mime = $element.attr('mime-type');
+        if (typeof mime === 'string') {
+            if (
+                mime === 'image/svg+xml'
+             || mime === 'image/jpeg'
+             || mime === 'image/png'
+            ) {
+                options.mimeType = mime;
+            } else {
+                throw new Error(`Invalid MIME type ${util.inspect(mime)}`);
+            }
+        }
+
+        const bgColor = $element.attr('bg-color');
+        if (typeof bgColor === 'string') {
+            options.backgroundColor = bgColor;
+        }
+
+        const width = $element.attr('width');
+        if (typeof width === 'string') {
+            options.width = Number.parseFloat(width);
+            if (isNaN(options.width)) {
+                throw new Error(`diagrams-pintora: width is not a number ${width}`);
+            }
+        }
+
+        options.renderInSubprocess = false;
+
+        const buf = await render(options);
+
+        const id = $element.attr('id');
+        const clazz = $element.attr('class');
+        const alt = $element.attr('alt');
+        const title = $element.attr('title');
+        const caption = $element.attr('caption');
+
+        const cap = typeof caption === 'string'
+            ? `<figcaption>${encode(caption)}</figcaption>`
+            : '';
+        const Talt = typeof alt === 'string'
+            ? `alt="${encode(alt)}"`
+            : '';
+        const Ttitle = typeof title === 'string'
+            ? `title="${encode(title)}"`
+            : '';
+        const Tid = typeof id === 'string'
+            ? `id="${encode(id)}`
+            : '';
+        const Tclazz = typeof clazz === 'string'
+            ? `class="${encode(clazz)}`
+            : '';
+
+        // options.outputFN was set from output-file
+        // This creates vpathOut from that value
+        // This computs fspathOut, which is then
+        // assigned back into options.outputFN
+
+        let vpathOut;
+        if (! path.isAbsolute(options.outputFN)) {
+            let dir = path.dirname(metadata.document.path);
+            vpathOut = path.normalize(
+                path.join('/', dir, options.outputFN)
+            );
+        } else {
+            vpathOut = options.outputFN;
+        }
+
+        // Compute fspath for vpathOut
+        const fspathOut = path.normalize(path.join(
+            this.array.options.config.renderDestination, vpathOut
+        ));
+        options.outputFN = fspathOut;
+
+        if (options.outputFN) {
+            await fsp.writeFile(options.outputFN, buf);
+        }
+        return `
+        <figure ${Tid} ${Tclazz}>
+        <img src="${encode(vpathOut)}" ${Talt} ${Ttitle}/>
+        ${cap}
+        </figure>
+        `;
+    }
+}
 
 /**
  * Options object that is converted into plantuml.jar options.

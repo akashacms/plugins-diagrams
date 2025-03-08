@@ -1,3 +1,4 @@
+import { PintoraConfig } from '@pintora/cli';
 import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
 export declare class DiagramsPlugin extends Plugin {
@@ -7,6 +8,37 @@ export declare class DiagramsPlugin extends Plugin {
     get config(): any;
 }
 export declare function mahabhutaArray(options: any): akasha.mahabhuta.MahafuncArray;
+export type PintoraRenderOptions = {
+    /**
+     * pintora DSL code to render
+     */
+    code: string;
+    devicePixelRatio?: number | null;
+    /**
+     * Type for the output file
+     *
+    // image/svg+xml
+    // image/jpeg
+    // image/png
+     */
+    mimeType?: string;
+    /**
+     * Assign extra background color
+     */
+    backgroundColor?: string;
+    pintoraConfig?: Partial<PintoraConfig>;
+    /**
+     * width of the output, height will be calculated according to the diagram content ratio
+     */
+    width?: number;
+    /**
+     * Whether we should run render in a subprocess rather in current process.
+     * If you call the `render` function, by default this is true, to avoid polluting the global environment.
+     */
+    renderInSubprocess?: boolean;
+    outputFN: string;
+};
+export declare function doPintora(options: PintoraRenderOptions): Promise<void>;
 /**
  * Options object that is converted into plantuml.jar options.
  */
