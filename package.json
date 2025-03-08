@@ -1,6 +1,6 @@
 {
   "name": "@akashacms/diagrams-maker",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Process PlantUML diagrams into SVG, PNG, as well as AkashaCMS integration",
   "bin": {
     "diagrams-maker": "dist/cli.js"
