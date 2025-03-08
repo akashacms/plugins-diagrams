@@ -1,8 +1,8 @@
 # @akashacms/diagrams-maker
 
-Process PlantUML diagrams and either convert into an output file, or embed as HTML in a document.
+Process PlantUML, or Pintora, diagrams and either convert into an output file, or embed as HTML in a document.
 
-Diagrams are rendered locally using a copy of `plantuml.jar`, specifically the version released under the MIT license.  By using the JAR file, you are not reliant on an external server.
+PlantUML diagrams are rendered locally using a copy of `plantuml.jar`, specifically the version released under the MIT license.  By using the JAR file, you are not reliant on an external server.
 
 **NOTE**: This package requires the Java runtime to be installed on your machine and in your path.  You can test this by running `java --help` at the command line.
 
@@ -76,6 +76,37 @@ $ npx diagrams-maker plantuml \
 
 This will search for PlantUML documents in the named files or directories, generating PNG files, with the files landing in a directory hierarchy under the `out` directory.
 
+## USAGE - CLI - Pintora
+
+The package includes the following CLI commands to use Pintora.
+
+```shell
+$ npx diagrams-maker pintora --help
+Usage: diagrams-maker pintora [options]
+
+Render Pintora files
+
+Options:
+  --input-file <inputFN>    Path for document to render
+  --output-file <outputFN>  Path for rendered document
+  --pixel-ratio <ratio>
+  --mime-type <mt>          MIME type for output file
+  --bg-color <color>        String describing background color
+  --width <number>          Width of the output, height will be calculated according to the diagram content ratio
+  -h, --help                display help for command
+```
+
+The only mode is to render a single input file to an output file:
+
+```shell
+$ npx diagrams-maker pintora \
+      --input-file flight.pintora \
+      --output-file flight.png  \
+      --mime-type image/png
+```
+
+The `--mime-type` option selects between `image/svg+xml`, `image/jpeg`, or `image/png`.
+
 <!-- ## USAGE - CLI - Mermaid -->
 <!-- ## USAGE - CLI - KaTeX -->
 
@@ -121,7 +152,7 @@ config.use(DiagramsPlugin);
 
 ### PlantUML diagrams in AkashaCMS projects
 
-In a document the `<diagrams-plantuml>` is used for rendering a single PlantUML diagram into either PNG or SVG.
+In a document the `<diagrams-plantuml>` tag is used for rendering a single PlantUML diagram into either PNG or SVG.
 
 The PlantUML document can be used inline
 
@@ -149,7 +180,6 @@ Either the `tpng` or `tsvg` property (not attribute) is used to indicate the out
 
 The diagram can also be in the filesystem:
 
-
 ```html
 <diagrams-plantuml
     input-file="./img/flight.puml"
@@ -164,6 +194,33 @@ The diagram can also be in the filesystem:
 The `input-file` path must be a virtual path within either an `assets` or `documents` directory.
 
 If the `input-file` is an absolute pathname, it is relative to the root of the virtual filespace of the AkashaCMS project configuration.  A relative pathname is relative to the file being rendered.
+
+### Pintora diagrams in an AkashaCMS project
+
+In a document the `<diagrams-pintors>` tag is used for rendering a single Pintora diagram into PNG, JPEG, or SVG.
+
+The Pintora document can be used inline
+
+```html
+<diagrams-pintora output-file="./flight.png" mime-type="image/png">
+sequenceDiagram
+  Frida-->>Georgia: Flowers are beautiful
+  @note over Frida,Georgia: Painters
+  @note right of Georgia: Right
+  @start_note left of Georgia
+  multiline
+  note
+  @end_note
+</diagrams-pintora>
+```
+
+Or, the Pintora document can be in an external file:
+
+```html
+<diagrams-pintora input-file="./flight.pint" output-file="./flight.jpeg" mime-type="image/jpeg"/>
+```
+
+Sometimes a Pintora document will not parse correctly when used in-line.  The solution for such a case is to place the diagram description in a file.
 
 ## Hat Tip
 
