@@ -1,3 +1,4 @@
+#! /usr/bin/env node
 
 const __dirname = import.meta.dirname;
 
