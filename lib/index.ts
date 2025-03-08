@@ -104,14 +104,45 @@ class PintoraLocal extends mahabhuta.CustomElement {
             outputFN: $element.attr('output-file')
         };
 
+        let vpathIn;
+        let fspathIn;
         const inf =  $element.attr('input-file');
-        if (typeof inf === 'string') {
+        if (typeof inf === 'string'
+         && inf.length >= 1
+        ) {
+            if (path.isAbsolute(inf)) {
+                vpathIn = inf;
+            } else {
+                let dir = path.dirname(metadata.document.path);
+                vpathIn = path.normalize(
+                    path.join('/', dir, inf)
+                );
+            }
+        }
+
+        console.log(`PintoraLocal input-file ${util.inspect(inf)} vpathIn ${util.inspect(vpathIn)}`);
+
+        const documents = this.array.options.config.akasha.filecache.documentsCache;
+        const assets = this.array.options.config.akasha.filecache.assetsCache;
+        const doc = vpathIn
+            ? await documents.find(vpathIn)
+            : undefined;
+        let asset;
+
+        if (!doc) asset = vpathIn
+            ? await assets.find(vpathIn)
+            : undefined;
+   
+        if (doc) fspathIn = doc.fspath;
+        else if (asset) fspathIn = asset.fspath;
+
+        if (typeof fspathIn === 'string') {
             if (typeof options.code === 'string'
              && options.code.length >= 1
             ) {
                 throw new Error(`diagrams-pintora - either specify input-file OR a diagram body, not both`);
             }
-            options.code = await fsp.readFile(inf, 'utf-8');
+            options.code = await fsp.readFile(fspathIn, 'utf-8');
         }
 
         if (typeof options.outputFN !== 'string'
