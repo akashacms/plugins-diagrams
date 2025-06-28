@@ -197,7 +197,7 @@ If the `input-file` is an absolute pathname, it is relative to the root of the v
 
 ### Pintora diagrams in an AkashaCMS project
 
-In a document the `<diagrams-pintors>` tag is used for rendering a single Pintora diagram into PNG, JPEG, or SVG.
+In a document the `<diagrams-pintora>` tag is used for rendering a single Pintora diagram into PNG, JPEG, or SVG.
 
 The Pintora document can be used inline
 
@@ -221,7 +221,3 @@ Or, the Pintora document can be in an external file:
 ```
 
 Sometimes a Pintora document will not parse correctly when used in-line.  The solution for such a case is to place the diagram description in a file.
-
-## Hat Tip
-
-This package was inspired by https://www.npmjs.com/package/plantuml

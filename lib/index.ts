@@ -33,18 +33,25 @@ export class DiagramsPlugin extends Plugin {
 
     configure(config, options) {
         this.#config = config;
-        super.options = options; // ? options : {};
-        options.config = config;
-        config.addMahabhuta(mahabhutaArray(options));
+        // this.config = config;
+        this.akasha = config.akasha;
+        this.options = options ? options : {};
+        this.options.config = config;
+        config.addMahabhuta(mahabhutaArray(options, config, this.akasha, this));
     }
 
     get config() { return this.#config; }
 }
 
-export function mahabhutaArray(options) {
+export function mahabhutaArray(
+    options,
+    config?: akasha.Configuration,
+    akasha?: any,
+    plugin?: Plugin
+) {
     let ret = new mahabhuta.MahafuncArray(pluginName, options);
-    ret.addMahafunc(new PlantUMLLocal());
-    ret.addMahafunc(new PintoraLocal());
+    ret.addMahafunc(new PlantUMLLocal(config, akasha, plugin));
+    ret.addMahafunc(new PintoraLocal(config, akasha, plugin));
     return ret;
 };
 
@@ -95,7 +102,7 @@ export async function doPintora(
     }
 }
 
-class PintoraLocal extends mahabhuta.CustomElement {
+class PintoraLocal extends akasha.CustomElement {
 	get elementName() { return "diagrams-pintora"; }
 
     async process($element, metadata, dirty: Function) {
@@ -585,7 +592,7 @@ export async function doPlantUMLLocal(options) {
  * to the output directory.  Otherwise it is relative
  * to the dirname(metadata.document.path).
  */
-class PlantUMLLocal extends mahabhuta.CustomElement {
+class PlantUMLLocal extends akasha.CustomElement {
 
 	get elementName() { return "diagrams-plantuml"; }
     async process($element, metadata, dirty: Function) {
