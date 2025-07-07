@@ -108,7 +108,7 @@ export function MarkdownITMermaidPlugin(md, opts: MermaidPluginOptions) {
             ), code, 'utf8');
 
             return `<diagrams-mermaid
-                        title="${title}"
+                        caption="${title}"
                         input-file='${mmdFileName}'
                         output-file='${svgFileName}'/>
             `;
