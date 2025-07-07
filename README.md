@@ -1,12 +1,12 @@
 # @akashacms/diagrams-maker
 
-Process PlantUML, or Pintora, diagrams and either convert into an output file, or embed as HTML in a document.
+Process PlantUML, Mermaid, or Pintora, diagrams and either convert into an output file, or embed as HTML in a document.
 
 PlantUML diagrams are rendered locally using a copy of `plantuml.jar`, specifically the version released under the MIT license.  By using the JAR file, you are not reliant on an external server.
 
 **NOTE**: This package requires the Java runtime to be installed on your machine and in your path.  You can test this by running `java --help` at the command line.
 
-**NOTE**: It was intended that this package also support Mermaid and KaTeX.  Those who are interested (or not) should see [the issue queue entry](https://github.com/akashacms/plugins-diagrams/issues/7) for this task.
+**NOTE**: It was intended that this package also support KaTeX.  Those who are interested (or not) should see [the issue queue entry](https://github.com/akashacms/plugins-diagrams/issues/7) for this task.
 
 ## INSTALL
 
@@ -107,7 +107,10 @@ $ npx diagrams-maker pintora \
 
 The `--mime-type` option selects between `image/svg+xml`, `image/jpeg`, or `image/png`.
 
-<!-- ## USAGE - CLI - Mermaid -->
+## USAGE - CLI - Mermaid
+
+While this package now supports Mermaid, it does not have CLI support.
+
 <!-- ## USAGE - CLI - KaTeX -->
 
 ## API - PlantUML
@@ -140,14 +143,25 @@ There are three modes for treating inputs and outputs:
 
 ## Usage - AkashaCMS project
 
-The `@akashacms/diagrams-makers` package includes an AkashaCMS plugin.
+The `@akashacms/diagrams-makers` package includes an AkashaCMS plugin, as well as a Markdown-IT plugin supporting Mermaid.
 
 Setup, configuration:
 
 ```js
-import { DiagramsPlugin } from '@akashacms/diagrams-makers';
+import {
+    DiagramsPlugin,
+    MarkdownITMermaidPlugin
+} from '@akashacms/diagrams-makers';
 
 config.use(DiagramsPlugin);
+
+const scratchDir = path.join(process.cwd(), '_mermaid');
+config.addDocumentsDir(scratchDir);
+config.findRendererName('.html.md')
+.use(MarkdownITMermaidPlugin, {
+    fspath: scratchDir,
+    prefix: '/_mermaid'
+});
 ```
 
 ### PlantUML diagrams in AkashaCMS projects
@@ -221,3 +235,72 @@ Or, the Pintora document can be in an external file:
 ```
 
 Sometimes a Pintora document will not parse correctly when used in-line.  The solution for such a case is to place the diagram description in a file.
+
+### Inline Mermaid diagrams in an AkashaCMS project
+
+To implement this behavior, add `MarkdownITMermaidPlugin` to Markdown-IT as shown above.
+
+In a document, we can include an inline Mermaid document like so:
+
+```
+```mermaid optional title goes here
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+```
+```
+
+In otherwords, within a 3-backtick fence labeled with the language `mermaid`, you place a Mermaid document.  You may also use a three-tilde fence (`~~~mermaid`) if you prefer.
+
+A document title can be included by adding a space after `mermaid` then adding text to be used as the title.
+
+Behind the scenes this is saved out to a file in the filesystem.  This will be within the `scratchDir` defined in the code snippet above.  The file name will be hash-coded and have the extension `.mermaid`.  In the rendered HTML, there will be a custom tag in this form:
+
+```html
+<diagrams-mermaid
+        caption="${title}"
+        input-file='${mmdFileName}'
+        output-file='${svgFileName}'/>
+```
+
+This custom tag is processed by `DiagramsPlugin`.  It invokes the Mermaid CLI `run` function to render the Mermaid document into SVG.
+
+The above is replaced by this:
+
+```html
+<figure ${Tid} ${Tclazz}>
+<img src="${encode(outputFN)}" ${Talt} ${Ttitle}/>
+${cap}
+</figure>
+```
+
+Notice that the optional `title` text described earlier is passed as the `caption` option.  This ends up in the `${cap}` field of the template as `<figcaption>${encode(caption)}</figcaption>`.
+
+In all cases, the Mermaid document is rendered in SVG format.
+
+### Rendering Mermaid diagrams in an AkashaCMS project
+
+In the previous subsection we described rendering a Mermaid document that's inline in a Markdown document.  One can also directly use the `diagrams-mermaid` custom element as shown above.
+
+```html
+<diagrams-mermaid
+        id="${id}"
+        class="${class}"
+        alt="${alt}"
+        title="${title}"
+        caption="${caption}"
+        input-file='${mmdFileName}'
+        output-file='${svgFileName}'/>
+```
+
+In this mode, the MarkdownITMermaidPlugin class is not required.  Instead, the configuration can simply be:
+
+```js
+config.use(DiagramsPlugin);
+```
+
+Currently, the usage is as shown here, with `input-file` and `output-file` options.  Additionally, `id`, `class`, `alt`, `title`, and `caption` options are available, and pass into the rendered HTML using the template shown earlier.
+
+In all cases, the Mermaid document is rendered in SVG format.

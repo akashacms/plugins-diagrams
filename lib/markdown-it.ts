@@ -59,6 +59,35 @@ export function MarkdownITMermaidPlugin(md, opts: MermaidPluginOptions) {
                 title = token.info.slice(spc + 1);
             }
 
+            // Markdown-IT rules functions like this are SYNCHRONOUS.
+            // The fence rules handle the code block using
+            // three backticks and a language identifier.
+            // Hence, the token.info is the langauge tag, and
+            // this function is triggered for mermaid code blocks.
+            //
+            // Because it is SYNCHRONOUS we cannot call
+            // the Mermaid CLI 'run' function, which is
+            // inherently asynchronous.
+            //
+            // Therefore, what we're left with is to generate
+            // a custom tag thad will trigger a function capable
+            // of asynchronously invoking runMermaid.
+            //
+            // We take the content of the code block, and
+            // store it into a file.  Which means we must have
+            // a place to put that file.
+            //
+            // That place MUST be a Documents directory so that
+            // AkashaCMS code will see and render the document.
+            //
+            // To support that, there are two required options.
+            //
+            //  * fspath is the file-system path for a directory
+            //  * prefix is the prefix to use for the generated file name
+            //
+            // For the custom tag to work, the `fspath` directory
+            // must be mounted using config.addDocumentsDir.
+            //
         
             const uniqueId = "render" + Murmur(code, 4242).toString();
 
@@ -79,6 +108,7 @@ export function MarkdownITMermaidPlugin(md, opts: MermaidPluginOptions) {
             ), code, 'utf8');
 
             return `<diagrams-mermaid
+                        title="${title}"
                         input-file='${mmdFileName}'
                         output-file='${svgFileName}'/>
             `;

@@ -7,6 +7,11 @@ import { execSync, spawnSync, spawn } from 'node:child_process';
 import {encode} from 'html-entities';
 import { render, PintoraConfig } from '@pintora/cli'
 
+export {
+    MarkdownITMermaidPlugin,
+    MermaidPluginOptions
+} from './markdown-it.js';
+
 const __dirname = import.meta.dirname;
 
 // Path name for the local copy of plantuml.jar
@@ -22,6 +27,8 @@ const pluginName = '@akashacms/plugins-diagrams';
 import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
 const mahabhuta = akasha.mahabhuta;
+
+import { run as runMermaid } from "@mermaid-js/mermaid-cli";
 
 export class DiagramsPlugin extends Plugin {
 
@@ -50,10 +57,115 @@ export function mahabhutaArray(
     plugin?: Plugin
 ) {
     let ret = new mahabhuta.MahafuncArray(pluginName, options);
+    ret.addMahafunc(new MermaidLocal(config, akasha, plugin));
     ret.addMahafunc(new PlantUMLLocal(config, akasha, plugin));
     ret.addMahafunc(new PintoraLocal(config, akasha, plugin));
     return ret;
 };
+
+class MermaidLocal extends akasha.CustomElement {
+	get elementName() { return "diagrams-mermaid"; }
+
+    async process($element, metadata, dirty: Function) {
+
+        let code = $element.text();
+        const outputFN = $element.attr('output-file');
+        const inf =  $element.attr('input-file');
+
+        // console.log(`MermaidLocal ${inf} ==> ${outputFN}`);
+
+        let vpathIn;
+        let fspathIn;
+        if (typeof inf === 'string'
+         && inf.length >= 1
+        ) {
+            if (path.isAbsolute(inf)) {
+                vpathIn = inf;
+            } else {
+                let dir = path.dirname(metadata.document.path);
+                vpathIn = path.normalize(
+                    path.join('/', dir, inf)
+                );
+            }
+        }
+        const documents = this.config.akasha.filecache.documentsCache;
+        const assets = this.akasha.filecache.assetsCache;
+
+        // console.log(`MermaidLocal ${inf} ${vpathIn}`);
+
+        const doc = vpathIn
+            ? await documents.find(vpathIn)
+            : undefined;
+
+        let asset;
+        if (!doc) asset = vpathIn
+            ? await assets.find(vpathIn)
+            : undefined;
+   
+        if (doc) fspathIn = doc.fspath;
+        else if (asset) fspathIn = asset.fspath;
+
+        // console.log(`MermaidLocal ${inf} ${vpathIn} ${fspathIn}`);
+
+        // if (typeof fspathIn === 'string') {
+        //     if (typeof code === 'string'
+        //      && code.length >= 1
+        //     ) {
+        //         throw new Error(`diagrams-mermaid - either specify input-file OR a diagram body, not both`);
+        //     }
+        //     code = await fsp.readFile(fspathIn, 'utf-8');
+        // }
+
+        // console.log(`MermaidLocal ${inf} ${vpathIn} ${fspathIn} read code ${code}`);
+
+        if (typeof outputFN !== 'string'
+         || outputFN.length < 1
+        ) {
+            throw new Error(`diagrams-mermaid must have output-file`);
+        }
+
+        if (!outputFN.endsWith('.svg')) {
+            throw new Error(`diagrams-mermaid must have output-file for .svg extension`);
+        }
+
+        const fspathOut = path.join(
+            this.config.renderDestination, outputFN
+        );
+
+        // console.log(`MermaidLocal runMermaid ${fspathIn} ${outputFN} ${fspathOut}`);
+
+        await runMermaid(fspathIn, fspathOut as `${string}.svg`);
+
+        const id = $element.attr('id');
+        const clazz = $element.attr('class');
+        const alt = $element.attr('alt');
+        const title = $element.attr('title');
+        const caption = $element.attr('caption');
+
+        const cap = typeof caption === 'string'
+            ? `<figcaption>${encode(caption)}</figcaption>`
+            : '';
+        const Talt = typeof alt === 'string'
+            ? `alt="${encode(alt)}"`
+            : '';
+        const Ttitle = typeof title === 'string'
+            ? `title="${encode(title)}"`
+            : '';
+        const Tid = typeof id === 'string'
+            ? `id="${encode(id)}`
+            : '';
+        const Tclazz = typeof clazz === 'string'
+            ? `class="${encode(clazz)}`
+            : '';
+
+        return `
+        <figure ${Tid} ${Tclazz}>
+        <img src="${encode(outputFN)}" ${Talt} ${Ttitle}/>
+        ${cap}
+        </figure>
+        `;
+    }
+}
 
 export type PintoraRenderOptions = {
     /**
@@ -129,8 +241,8 @@ class PintoraLocal extends akasha.CustomElement {
 
         console.log(`PintoraLocal input-file ${util.inspect(inf)} vpathIn ${util.inspect(vpathIn)}`);
 
-        const documents = this.array.options.config.akasha.filecache.documentsCache;
-        const assets = this.array.options.config.akasha.filecache.assetsCache;
+        const documents = this.config.akasha.filecache.documentsCache;
+        const assets = this.akasha.filecache.assetsCache;
         const doc = vpathIn
             ? await documents.find(vpathIn)
             : undefined;
@@ -238,7 +350,7 @@ class PintoraLocal extends akasha.CustomElement {
 
         // Compute fspath for vpathOut
         const fspathOut = path.normalize(path.join(
-            this.array.options.config.renderDestination, vpathOut
+            this.config.renderDestination, vpathOut
         ));
         options.outputFN = fspathOut;
 

@@ -1,4 +1,5 @@
 import { PintoraConfig } from '@pintora/cli';
+export { MarkdownITMermaidPlugin, MermaidPluginOptions } from './markdown-it.js';
 import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
 export declare class DiagramsPlugin extends Plugin {
@@ -7,7 +8,7 @@ export declare class DiagramsPlugin extends Plugin {
     configure(config: any, options: any): void;
     get config(): any;
 }
-export declare function mahabhutaArray(options: any): akasha.mahabhuta.MahafuncArray;
+export declare function mahabhutaArray(options: any, config?: akasha.Configuration, akasha?: any, plugin?: Plugin): akasha.mahabhuta.MahafuncArray;
 export type PintoraRenderOptions = {
     /**
      * pintora DSL code to render

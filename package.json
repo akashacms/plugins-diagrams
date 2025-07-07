@@ -30,6 +30,7 @@
   },
   "homepage": "https://github.com/akashacms/plugins-diagrams#readme",
   "dependencies": {
+    "@mermaid-js/mermaid-cli": "^11.6.0",
     "@pintora/cli": "^0.8.x",
     "commander": "^14.0.0",
     "html-entities": "^2.5.2"
