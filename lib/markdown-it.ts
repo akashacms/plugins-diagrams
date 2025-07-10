@@ -57,6 +57,8 @@ export function MarkdownITMermaidPlugin(md, opts: MermaidPluginOptions) {
             const spc = token.info.indexOf(' ', 7);
             if (spc > 0) {
                 title = token.info.slice(spc + 1);
+            } else {
+                title = '';
             }
 
             // Markdown-IT rules functions like this are SYNCHRONOUS.
@@ -95,7 +97,8 @@ export function MarkdownITMermaidPlugin(md, opts: MermaidPluginOptions) {
                 prefix, `${uniqueId}.mermaid`
             );
             const svgFileName = path.join(
-                prefix, `${uniqueId}.svg`
+                prefix, `${uniqueId}.png`
+                // prefix, `${uniqueId}.svg`
             );
 
             fs.mkdirSync(path.join(
@@ -107,11 +110,13 @@ export function MarkdownITMermaidPlugin(md, opts: MermaidPluginOptions) {
                 fspath, mmdFileName
             ), code, 'utf8');
 
-            return `<diagrams-mermaid
+            const ret = `<diagrams-mermaid
                         caption="${title}"
                         input-file='${mmdFileName}'
                         output-file='${svgFileName}'/>
             `;
+            // console.log(`MarkdownITMermaidPlugin ${code} ==> ${ret}`);
+            return ret;
 
         }
         return defaultRenderer(tokens, idx, opts, env, self);

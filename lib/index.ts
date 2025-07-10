@@ -124,17 +124,37 @@ class MermaidLocal extends akasha.CustomElement {
             throw new Error(`diagrams-mermaid must have output-file`);
         }
 
-        if (!outputFN.endsWith('.svg')) {
-            throw new Error(`diagrams-mermaid must have output-file for .svg extension`);
+        if (!outputFN.endsWith('.svg') && !outputFN.endsWith('.png')) {
+            throw new Error(`diagrams-mermaid must have output-file for .svg or .png extension`);
         }
 
         const fspathOut = path.join(
             this.config.renderDestination, outputFN
         );
 
-        // console.log(`MermaidLocal runMermaid ${fspathIn} ${outputFN} ${fspathOut}`);
+        // console.log(`MermaidLocal runMermaid ${this.config.configDir} ${this.config.renderDestination} ${fspathIn} ${outputFN} ${fspathOut}`);
 
-        await runMermaid(fspathIn, fspathOut as `${string}.svg`);
+        await fsp.mkdir(path.dirname(fspathOut), {
+            recursive: true
+        });
+
+        await runMermaid(fspathIn,
+            fspathOut as `${string}.png` | `${string}.svg`,
+            {
+                // Controls the debugging output from Mermaid CLI,
+                // including:
+                //      Generating single mermaid chart
+                quiet: true
+            }
+        );
+
+        let width = $element.attr('width');
+        if (typeof width === 'string') {
+            width = Number.parseFloat(width);
+            if (isNaN(width)) {
+                throw new Error(`diagrams-mermaid: width is not a number ${width}`);
+            }
+        }
 
         const id = $element.attr('id');
         const clazz = $element.attr('class');
@@ -157,13 +177,18 @@ class MermaidLocal extends akasha.CustomElement {
         const Tclazz = typeof clazz === 'string'
             ? `class="${encode(clazz)}`
             : '';
+        const Twidth = typeof width === 'number'
+            ? `width="${width.toString()}"`
+            : '';
 
-        return `
+        const ret = `
         <figure ${Tid} ${Tclazz}>
-        <img src="${encode(outputFN)}" ${Talt} ${Ttitle}/>
+        <img src="${encode(outputFN)}" ${Talt} ${Ttitle} ${Twidth}/>
         ${cap}
         </figure>
         `;
+        // console.log(`MermaidLocal returning ${ret}`);
+        return ret;
     }
 }
 
@@ -239,7 +264,7 @@ class PintoraLocal extends akasha.CustomElement {
             }
         }
 
-        console.log(`PintoraLocal input-file ${util.inspect(inf)} vpathIn ${util.inspect(vpathIn)}`);
+        // console.log(`PintoraLocal input-file ${util.inspect(inf)} vpathIn ${util.inspect(vpathIn)}`);
 
         const documents = this.config.akasha.filecache.documentsCache;
         const assets = this.akasha.filecache.assetsCache;
@@ -332,6 +357,9 @@ class PintoraLocal extends akasha.CustomElement {
         const Tclazz = typeof clazz === 'string'
             ? `class="${encode(clazz)}`
             : '';
+        const Twidth = typeof options.width === 'number'
+            ? `width="${options.width.toString()}"`
+            : '';
 
         // options.outputFN was set from output-file
         // This creates vpathOut from that value
@@ -357,12 +385,14 @@ class PintoraLocal extends akasha.CustomElement {
         if (options.outputFN) {
             await fsp.writeFile(options.outputFN, buf);
         }
-        return `
+        const ret = `
         <figure ${Tid} ${Tclazz}>
-        <img src="${encode(vpathOut)}" ${Talt} ${Ttitle}/>
+        <img src="${encode(vpathOut)}" ${Talt} ${Ttitle} ${Twidth}/>
         ${cap}
         </figure>
         `;
+        // console.log(ret);
+        return ret;
     }
 }
 
@@ -752,8 +782,8 @@ class PlantUMLLocal extends akasha.CustomElement {
                 );
             }
 
-            const documents = this.array.options.config.akasha.filecache.documentsCache;
-            const assets = this.array.options.config.akasha.filecache.assetsCache;
+            const documents = this.config.akasha.filecache.documentsCache;
+            const assets = this.config.akasha.filecache.assetsCache;
             const doc = await documents.find(vpathIn);
             let asset;
 
@@ -790,6 +820,18 @@ class PlantUMLLocal extends akasha.CustomElement {
             this.array.options.config.renderDestination, vpathOut
         ));
         options.outputFN = fspathOut;
+
+        let width = $element.attr('width');
+        // console.log(`width=${width}`);
+        if (typeof width === 'string') {
+            width = Number.parseFloat(width);
+            if (isNaN(width)) {
+                throw new Error(`PlantUMLLocal: width is not a number ${width}`);
+            }
+            (<any>options).width = width;
+        }
+
+        // console.log(options);
 
         const id = $element.attr('id');
         const clazz = $element.attr('class');
@@ -840,13 +882,18 @@ class PlantUMLLocal extends akasha.CustomElement {
         const Tclazz = typeof clazz === 'string'
             ? `class="${encode(clazz)}`
             : '';
+        const Twidth = typeof width === 'number'
+            ? `width="${width.toString()}"`
+            : '';
 
-        return `
+        const ret = `
         <figure ${Tid} ${Tclazz}>
-        <img src="${encode(vpathOut)}" ${Talt} ${Ttitle}/>
+        <img src="${encode(vpathOut)}" ${Talt} ${Ttitle} ${Twidth}/>
         ${cap}
         </figure>
         `;
+        // console.log(ret);
+        return ret;
     }
 }
 
