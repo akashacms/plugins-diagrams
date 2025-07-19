@@ -50,7 +50,18 @@ export function MarkdownITMermaidPlugin(md, opts: MermaidPluginOptions) {
 
     md.renderer.rules.fence = (tokens, idx, opts, env, self) => {
         const token = tokens[idx];
-        const code = token.content.trim();
+        // The idea is trimming off excess whitespace from the code block.
+        // But, using the .trim function removes both newlines and spaces.
+        // For some Mermaid diagrams, trailing spaces are important, and
+        // if the trailing spaces are missing an error is thrown.
+        //
+        // If trailing newlines are left in the string, for some
+        // reason the Mermaid call "never" finishes.
+        //
+        // This replace call removes only the newlines leaving behind
+        // any whitespace.
+        // Source: https://stackoverflow.com/questions/14572413/remove-line-breaks-from-start-and-end-of-string
+        const code = token.content.replace(/^\n|\n$/g, ''); //.trim();
         // console.log(`MermaidPlugin rules.fence ${token.info} ${code}`, opts);
         if (token.info.startsWith('mermaid')) {
             let title;
