@@ -45,6 +45,11 @@ export class DiagramsPlugin extends Plugin {
         this.options = options ? options : {};
         this.options.config = config;
         config.addMahabhuta(mahabhutaArray(options, config, this.akasha, this));
+        let moduleDirname = import.meta.dirname;
+        config.addAssetsDir(path.join(moduleDirname, '..', 'assets'));
+        config.addStylesheet({
+            href: '/vendor/@akashacms/diagrams-maker/style.css'
+        });
     }
 
     get config() { return this.#config; }
@@ -138,16 +143,35 @@ class MermaidLocal extends akasha.CustomElement {
             recursive: true
         });
 
-        await runMermaid(fspathIn,
-            fspathOut as `${string}.png` | `${string}.svg`,
-            {
-                // Controls the debugging output from Mermaid CLI,
-                // including:
-                //      Generating single mermaid chart
-                quiet: true
-            }
-        );
+        try {
+            await runMermaid(fspathIn,
+                fspathOut as `${string}.png` | `${string}.svg`,
+                {
+                    // Controls the debugging output from Mermaid CLI,
+                    // including:
+                    //      Generating single mermaid chart
+                    quiet: true
+                }
+            );
+        } catch (err) {
+            const inputFile = await fsp.readFile(fspathIn, 'utf8');
+            console.error(`Mermaid threw error ${err.message}
+Input: ${inf} ${fspathIn} Output: ${outputFN} ${fspathOut}
+${inputFile}
+`);
+            return `
+<div class="diagrams-render-error">
+<span class="diagrams-title">Mermaid threw error ${err.message}</span>
+<span class="diagrams-error-files">
+<b>Input:</b> ${inf} ${fspathIn}<br/>
+<b>Output:</b> ${outputFN} ${fspathOut}</span>
+<code class="diagrams-error-input"><pre>${inputFile}</pre></code>
+</div>
+`;
+            // throw new Error(`Mermaid threw error ${err.message}`);
+        }
 
+        // else
         let width = $element.attr('width');
         if (typeof width === 'string') {
             width = Number.parseFloat(width);

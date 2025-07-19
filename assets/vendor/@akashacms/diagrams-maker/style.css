@@ -1,0 +1,21 @@
+
+div.diagrams-render-error {
+    border: 4px solid red;
+}
+
+span.diagrams-title {
+    display: block;
+    background-color: darkred;
+    color: white;
+    font-style: bold;
+}
+
+span.diagrams-error-files {
+    display: block;
+    border: 1px dotted grey;
+}
+
+span.diagrams-error-input {
+    display: block;
+    background-color: lightgray;
+}
