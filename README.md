@@ -8,6 +8,10 @@ PlantUML diagrams are rendered locally using a copy of `plantuml.jar`, specifica
 
 **NOTE**: It was intended that this package also support KaTeX.  Those who are interested (or not) should see [the issue queue entry](https://github.com/akashacms/plugins-diagrams/issues/7) for this task.
 
+## VERSION NOTE - 0.10
+
+This branch is for version 0.10 which is meant to correspond to AkashaRender 0.10
+
 ## INSTALL
 
 In an AkashaCMS project directory:
