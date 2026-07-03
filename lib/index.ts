@@ -28,7 +28,46 @@ import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
 const mahabhuta = akasha.mahabhuta;
 
-import { run as runMermaid } from "@mermaid-js/mermaid-cli";
+import { doMermaid } from './render-mermaid.js';
+
+export {
+    MermaidRenderOptions,
+    doMermaid,
+    renderMermaidSvg,
+    registerMermaidFonts
+} from './render-mermaid.js';
+
+export type DiagramsPluginOptions = {
+    /**
+     * Options for rendering <diagrams-mermaid> elements
+     */
+    mermaid?: {
+        /**
+         * File name of a JSON configuration file using the same
+         * schema as the mmdr --config file (theme, themeVariables,
+         * flowchart, ...).  Read once at configuration time.
+         */
+        configFN?: string;
+
+        /**
+         * JSON configuration string with the same schema.  Takes
+         * precedence over configFN.
+         */
+        configJSON?: string;
+
+        /**
+         * Theme preset name: default, dark, forest, neutral, modern.
+         * Takes precedence over the config's theme name.
+         */
+        themePreset?: string;
+
+        /**
+         * TTF/OTF font files to register for text measurement.
+         * When omitted, a common system font is used if found.
+         */
+        fontFNs?: string[];
+    };
+};
 
 export class DiagramsPlugin extends Plugin {
 
@@ -38,13 +77,19 @@ export class DiagramsPlugin extends Plugin {
         super(pluginName);
     }
 
-    configure(config, options) {
+    configure(config, options?: DiagramsPluginOptions) {
         this.#config = config;
         // this.config = config;
         this.akasha = config.akasha;
         this.options = options ? options : {};
         this.options.config = config;
-        config.addMahabhuta(mahabhutaArray(options, config, this.akasha, this));
+        if (this.options.mermaid?.configFN
+         && !this.options.mermaid.configJSON
+        ) {
+            this.options.mermaid.configJSON = fs.readFileSync(
+                this.options.mermaid.configFN, 'utf-8');
+        }
+        config.addMahabhuta(mahabhutaArray(this.options, config, this.akasha, this));
         let moduleDirname = import.meta.dirname;
         config.addAssetsDir(path.join(moduleDirname, '..', 'assets'));
         config.addStylesheet({
@@ -112,14 +157,13 @@ class MermaidLocal extends akasha.CustomElement {
 
         // console.log(`MermaidLocal ${inf} ${vpathIn} ${fspathIn}`);
 
-        // if (typeof fspathIn === 'string') {
-        //     if (typeof code === 'string'
-        //      && code.length >= 1
-        //     ) {
-        //         throw new Error(`diagrams-mermaid - either specify input-file OR a diagram body, not both`);
-        //     }
-        //     code = await fsp.readFile(fspathIn, 'utf-8');
-        // }
+        if (typeof fspathIn === 'string') {
+            code = await fsp.readFile(fspathIn, 'utf-8');
+        }
+
+        if (typeof code !== 'string' || code.length < 1) {
+            throw new Error(`diagrams-mermaid requires an input-file or an inline diagram body`);
+        }
 
         // console.log(`MermaidLocal ${inf} ${vpathIn} ${fspathIn} read code ${code}`);
 
@@ -129,8 +173,8 @@ class MermaidLocal extends akasha.CustomElement {
             throw new Error(`diagrams-mermaid must have output-file`);
         }
 
-        if (!outputFN.endsWith('.svg') && !outputFN.endsWith('.png')) {
-            throw new Error(`diagrams-mermaid must have output-file for .svg or .png extension`);
+        if (!outputFN.endsWith('.svg')) {
+            throw new Error(`diagrams-mermaid must have output-file with .svg extension - mermaid-wasm-renderer does not support .png`);
         }
 
         const fspathOut = path.join(
@@ -143,29 +187,28 @@ class MermaidLocal extends akasha.CustomElement {
             recursive: true
         });
 
+        const mermaidOptions = this.array.options?.mermaid ?? {};
+
         try {
-            await runMermaid(fspathIn,
-                fspathOut as `${string}.png` | `${string}.svg`,
-                {
-                    // Controls the debugging output from Mermaid CLI,
-                    // including:
-                    //      Generating single mermaid chart
-                    quiet: true
-                }
-            );
+            await doMermaid({
+                code,
+                outputFN: fspathOut,
+                configJSON: mermaidOptions.configJSON,
+                themePreset: mermaidOptions.themePreset,
+                fontFNs: mermaidOptions.fontFNs
+            });
         } catch (err) {
-            const inputFile = await fsp.readFile(fspathIn, 'utf8');
             console.error(`Mermaid threw error ${err.message}
 Input: ${inf} ${fspathIn} Output: ${outputFN} ${fspathOut}
-${inputFile}
+${code}
 `);
             return `
 <div class="diagrams-render-error">
-<span class="diagrams-title">Mermaid threw error ${err.message}</span>
+<span class="diagrams-title">Mermaid threw error ${encode(err.message)}</span>
 <span class="diagrams-error-files">
 <b>Input:</b> ${inf} ${fspathIn}<br/>
 <b>Output:</b> ${outputFN} ${fspathOut}</span>
-<code class="diagrams-error-input"><pre>${inputFile}</pre></code>
+<code class="diagrams-error-input"><pre>${encode(code)}</pre></code>
 </div>
 `;
             // throw new Error(`Mermaid threw error ${err.message}`);
