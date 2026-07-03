@@ -1,0 +1,19 @@
+classDiagram
+    class DiagramsPlugin {
+        +configure(config, options)
+    }
+    class MermaidLocal {
+        +elementName() string
+        +process($element, metadata, dirty)
+    }
+    class PlantUMLLocal {
+        +elementName() string
+        +process($element, metadata, dirty)
+    }
+    class PintoraLocal {
+        +elementName() string
+        +process($element, metadata, dirty)
+    }
+    DiagramsPlugin --> MermaidLocal
+    DiagramsPlugin --> PlantUMLLocal
+    DiagramsPlugin --> PintoraLocal
