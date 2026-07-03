@@ -30,17 +30,16 @@
   },
   "homepage": "https://github.com/akashacms/plugins-diagrams#readme",
   "dependencies": {
-    "@mermaid-js/mermaid-cli": "^11.15.0",
     "@pintora/cli": "^0.8.x",
     "commander": "^14.0.0",
-    "html-entities": "^2.5.2"
+    "html-entities": "^2.5.2",
+    "mermaid-wasm-renderer": "github:akashacms/mermaid-wasm-renderer"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
     "typescript": "^5.7.3"
   },
   "peerDependencies": {
-    "akasharender": "akashacms/akasharender#0.10",
-    "puppeteer": "^24.43.1"
+    "akasharender": "akashacms/akasharender#0.10"
   }
 }
