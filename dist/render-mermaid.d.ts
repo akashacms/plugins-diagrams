@@ -1,7 +1,8 @@
 /**
  * Register the named TTF/OTF font files for text measurement.
  * Suppresses the automatic system font registration - the
- * user-supplied fonts take priority.
+ * user-supplied fonts take priority.  Each file is registered
+ * at most once, so this is safe to call for every render.
  */
 export declare function registerMermaidFonts(fontFNs: string[]): void;
 /**

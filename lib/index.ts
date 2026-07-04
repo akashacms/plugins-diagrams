@@ -28,7 +28,11 @@ import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
 const mahabhuta = akasha.mahabhuta;
 
-import { doMermaid } from './render-mermaid.js';
+import {
+    doMermaid,
+    registerMermaidFonts,
+    renderMermaidSvg
+} from './render-mermaid.js';
 
 export {
     MermaidRenderOptions,
@@ -167,36 +171,49 @@ class MermaidLocal extends akasha.CustomElement {
 
         // console.log(`MermaidLocal ${inf} ${vpathIn} ${fspathIn} read code ${code}`);
 
-        if (typeof outputFN !== 'string'
-         || outputFN.length < 1
-        ) {
-            throw new Error(`diagrams-mermaid must have output-file`);
-        }
-
-        if (!outputFN.endsWith('.svg')) {
-            throw new Error(`diagrams-mermaid must have output-file with .svg extension - mermaid-wasm-renderer does not support .png`);
-        }
-
-        const fspathOut = path.join(
-            this.config.renderDestination, outputFN
-        );
-
-        // console.log(`MermaidLocal runMermaid ${this.config.configDir} ${this.config.renderDestination} ${fspathIn} ${outputFN} ${fspathOut}`);
-
-        await fsp.mkdir(path.dirname(fspathOut), {
-            recursive: true
-        });
-
         const mermaidOptions = this.array.options?.mermaid ?? {};
 
-        try {
-            await doMermaid({
-                code,
-                outputFN: fspathOut,
-                configJSON: mermaidOptions.configJSON,
-                themePreset: mermaidOptions.themePreset,
-                fontFNs: mermaidOptions.fontFNs
+        // With no output-file attribute, the rendered SVG is
+        // inserted inline in the generated HTML rather than
+        // written to a file and referenced with <img>.
+        const inlineMode = typeof outputFN !== 'string'
+                        || outputFN.length < 1;
+
+        let svg;
+        let fspathOut;
+        if (!inlineMode) {
+            if (!outputFN.endsWith('.svg')) {
+                throw new Error(`diagrams-mermaid must have output-file with .svg extension - mermaid-wasm-renderer does not support .png`);
+            }
+
+            fspathOut = path.join(
+                this.config.renderDestination, outputFN
+            );
+
+            await fsp.mkdir(path.dirname(fspathOut), {
+                recursive: true
             });
+        }
+
+        try {
+            if (inlineMode) {
+                if (Array.isArray(mermaidOptions.fontFNs)
+                 && mermaidOptions.fontFNs.length >= 1
+                ) {
+                    registerMermaidFonts(mermaidOptions.fontFNs);
+                }
+                svg = renderMermaidSvg(code,
+                    mermaidOptions.configJSON,
+                    mermaidOptions.themePreset);
+            } else {
+                await doMermaid({
+                    code,
+                    outputFN: fspathOut,
+                    configJSON: mermaidOptions.configJSON,
+                    themePreset: mermaidOptions.themePreset,
+                    fontFNs: mermaidOptions.fontFNs
+                });
+            }
         } catch (err) {
             console.error(`Mermaid threw error ${err.message}
 Input: ${inf} ${fspathIn} Output: ${outputFN} ${fspathOut}
@@ -239,24 +256,70 @@ ${code}
             ? `title="${encode(title)}"`
             : '';
         const Tid = typeof id === 'string'
-            ? `id="${encode(id)}`
+            ? `id="${encode(id)}"`
             : '';
         const Tclazz = typeof clazz === 'string'
-            ? `class="${encode(clazz)}`
+            ? `class="${encode(clazz)}"`
             : '';
         const Twidth = typeof width === 'number'
             ? `width="${width.toString()}"`
             : '';
 
-        const ret = `
+        // In inline mode there is no <img> to carry the alt, title,
+        // and width attributes.  The alt text becomes an aria-label
+        // on the SVG root, the width resizes the SVG root, and the
+        // title lands on the <figure>.
+        const ret = inlineMode
+            ? `
+        <figure ${Tid} ${Tclazz} ${Ttitle}>
+        ${adaptInlineSvg(svg,
+            typeof width === 'number' ? width : undefined,
+            typeof alt === 'string' ? alt : undefined)}
+        ${cap}
+        </figure>
+        `
+            : `
         <figure ${Tid} ${Tclazz}>
         <img src="${encode(outputFN)}" ${Talt} ${Ttitle} ${Twidth}/>
         ${cap}
         </figure>
         `;
+        // console.log(`MermaidLocal returning `, {
+        //     id: id,
+        //     Tid: Tid,
+        //     inputFile: inf,
+        //     outputFN: outputFN,
+        //     ret: ret
+        // });
         // console.log(`MermaidLocal returning ${ret}`);
         return ret;
     }
+}
+
+/**
+ * Adjust the root element of a rendered SVG for inline embedding.
+ *
+ * When a width is given, the root width attribute is replaced and
+ * the height attribute removed, so the viewBox preserves the aspect
+ * ratio.  The alt text, when given, becomes an aria-label; the SVG
+ * is marked role="img" for accessibility either way.
+ */
+function adaptInlineSvg(
+    svg: string, width?: number, alt?: string
+): string {
+    return svg.replace(/^<svg([^>]*)>/, (_m, attrs) => {
+        let adjusted = attrs;
+        if (typeof width === 'number') {
+            adjusted = adjusted
+                .replace(/\swidth="[^"]*"/, ` width="${width}"`)
+                .replace(/\sheight="[^"]*"/, '');
+        }
+        let extra = ' role="img"';
+        if (typeof alt === 'string') {
+            extra += ` aria-label="${encode(alt)}"`;
+        }
+        return `<svg${adjusted}${extra}>`;
+    });
 }
 
 export type PintoraRenderOptions = {
@@ -944,10 +1007,10 @@ class PlantUMLLocal extends akasha.CustomElement {
             ? `title="${encode(title)}"`
             : '';
         const Tid = typeof id === 'string'
-            ? `id="${encode(id)}`
+            ? `id="${encode(id)}"`
             : '';
         const Tclazz = typeof clazz === 'string'
-            ? `class="${encode(clazz)}`
+            ? `class="${encode(clazz)}"`
             : '';
         const Twidth = typeof width === 'number'
             ? `width="${width.toString()}"`

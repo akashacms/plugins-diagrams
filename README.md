@@ -1,4 +1,4 @@
-# @akashacms/diagrams-maker
+# @akashacms/diagram-makers
 
 Process PlantUML, Mermaid, or Pintora, diagrams and either convert into an output file, or embed as HTML in a document.
 
@@ -12,7 +12,7 @@ These diagrams are rendered locally using a copy of `plantuml.jar`, specifically
 
 **Mermaid** -- https://mermaid.ai/open-source/
 
-These diagrams are rendered locally using a 3rd party Rust implementation of Mermaid that's packaged as WASM.  This means `@akashacms/diagrams-maker` does not use the official Mermaid implementation, and there may be differences in behavior.  But, the Rust/WASM implementation is a lot faster, and avoids a dependency on Puppeteer.
+These diagrams are rendered locally using a 3rd party Rust implementation of Mermaid that's packaged as WASM.  This means `@akashacms/diagram-makers` does not use the official Mermaid implementation, and there may be differences in behavior.  But, the Rust/WASM implementation is a lot faster, and avoids a dependency on Puppeteer.
 
 Refer to the Mermaid website for language documentation.
 
@@ -31,7 +31,7 @@ This branch is for version 0.10 which is meant to correspond to AkashaRender 0.1
 In an AkashaCMS project directory:
 
 ```shell
-$ npm install @akashacms/diagrams-maker --save
+$ npm install @akashacms/diagram-makers --save
 ```
 
 ## Usage - CLI -- PlantUML
@@ -39,7 +39,7 @@ $ npm install @akashacms/diagrams-maker --save
 The package includes a CLI tool with the following synopsis:
 
 ```shell
-Usage: npx diagrams-maker plantuml [options]
+Usage: npx diagram-makers plantuml [options]
 
 Render PlantUML files
 
@@ -75,7 +75,7 @@ Most of these options correspond directly to the CLI arguments for `plantuml.jar
 One mode is a single input file, and a single output file:
 
 ```shell
-$ npx diagrams-maker plantuml \
+$ npx diagram-makers plantuml \
       --input-file flight.puml \
       --output-file flight.png  \
       --tpng
@@ -86,7 +86,7 @@ This converts the PlantUML diagram in the named file into a PNG.
 The `--input-file` parameter can be used multiple times.  In that case, the parameters are treated as the `[file/dir] [file/dir] [file/dir]` parameters for `plantuml.jar`.  The `--output-file` parameter, if given, is ignored in this case.  You may use the `--output-dir` parameter to affect where the files land.
 
 ```shell
-$ npx diagrams-maker plantuml \
+$ npx diagram-makers plantuml \
     --input-file file1.puml --input-file dir/with/diagrams \
     --output-dir out
     --tpng
@@ -99,8 +99,8 @@ This will search for PlantUML documents in the named files or directories, gener
 The package includes the following CLI commands to use Pintora.
 
 ```shell
-$ npx diagrams-maker pintora --help
-Usage: diagrams-maker pintora [options]
+$ npx diagram-makers pintora --help
+Usage: diagram-makers pintora [options]
 
 Render Pintora files
 
@@ -117,7 +117,7 @@ Options:
 The only mode is to render a single input file to an output file:
 
 ```shell
-$ npx diagrams-maker pintora \
+$ npx diagram-makers pintora \
       --input-file flight.pintora \
       --output-file flight.png  \
       --mime-type image/png
@@ -130,8 +130,8 @@ The `--mime-type` option selects between `image/svg+xml`, `image/jpeg`, or `imag
 The package includes the following CLI command to use Mermaid.  Rendering uses [mermaid-wasm-renderer](https://github.com/akashacms/mermaid-wasm-renderer), a WebAssembly build of a native Mermaid renderer ([mermaid-rs-renderer](https://github.com/1jehuang/mermaid-rs-renderer)).  It runs in-process, requiring neither a browser nor Puppeteer, and renders diagrams in milliseconds.
 
 ```shell
-$ npx diagrams-maker mermaid --help
-Usage: diagrams-maker mermaid [options]
+$ npx diagram-makers mermaid --help
+Usage: diagram-makers mermaid [options]
 
 Render Mermaid files to SVG
 
@@ -150,7 +150,7 @@ Options:
 The only mode is to render a single input file to an output file.  Only SVG output is supported, and the output file name must have a `.svg` extension:
 
 ```shell
-$ npx diagrams-maker mermaid \
+$ npx diagram-makers mermaid \
       --input-file flow.mmd \
       --output-file flow.svg
 ```
@@ -178,7 +178,7 @@ The `--config` option names a JSON file for fine-grained control over rendering.
 A theme named with `--theme` takes precedence over the config file's `theme` setting, but is applied before `themeVariables`, so individual variable overrides still win.
 
 ```shell
-$ npx diagrams-maker mermaid \
+$ npx diagram-makers mermaid \
       --input-file flow.mmd \
       --output-file flow.svg \
       --theme dark \
@@ -188,7 +188,7 @@ $ npx diagrams-maker mermaid \
 Because the renderer runs in WebAssembly, it cannot discover system fonts on its own.  By default a common system font is located and registered automatically for exact text measurement, falling back to calibrated approximate metrics when none is found.  The `--font` option overrides this by naming one or more TTF/OTF font files to use instead:
 
 ```shell
-$ npx diagrams-maker mermaid \
+$ npx diagram-makers mermaid \
       --input-file flow.mmd \
       --output-file flow.svg \
       --font /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
@@ -199,7 +199,7 @@ A good source of freely licensed fonts is the [Google Fonts](https://fonts.googl
 ```shell
 $ curl -L -o Roboto.ttf \
     'https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf'
-$ npx diagrams-maker mermaid \
+$ npx diagram-makers mermaid \
       --input-file flow.mmd \
       --output-file flow.svg \
       --font Roboto.ttf \
@@ -212,10 +212,10 @@ For the font to take effect, the `fontFamily` in the config file (or the theme d
 
 ## API - PlantUML
 
-The `diagram-maker` package exports an API providing similar functionality.
+The `diagram-makers` package exports an API providing similar functionality.
 
 ```js
-import { doPlantUMLOptions, doPlantUMLLocal } from '@akashacms/diagrams-maker';
+import { doPlantUMLOptions, doPlantUMLLocal } from '@akashacms/diagram-makers';
 
 await doPlantUMLLocal({
   inputBody: `
@@ -243,7 +243,7 @@ There are three modes for treating inputs and outputs:
 The `doMermaid` function renders a Mermaid diagram into an SVG file:
 
 ```js
-import { MermaidRenderOptions, doMermaid } from '@akashacms/diagrams-maker';
+import { MermaidRenderOptions, doMermaid } from '@akashacms/diagram-makers';
 
 await doMermaid({
   code: `
@@ -266,7 +266,7 @@ For example, using a configuration and a specific font:
 
 ```js
 import { promises as fsp } from 'node:fs';
-import { doMermaid } from '@akashacms/diagrams-maker';
+import { doMermaid } from '@akashacms/diagram-maker';
 
 await doMermaid({
   code: await fsp.readFile('flow.mmd', 'utf-8'),
@@ -281,7 +281,7 @@ Rendering happens in-process through [mermaid-wasm-renderer](https://github.com/
 
 ## Usage - AkashaCMS project
 
-The `@akashacms/diagrams-makers` package includes an AkashaCMS plugin, as well as a Markdown-IT plugin supporting Mermaid.
+The `@akashacms/diagram-makers` package includes an AkashaCMS plugin, as well as a Markdown-IT plugin supporting Mermaid.
 
 Setup, configuration:
 
@@ -289,7 +289,7 @@ Setup, configuration:
 import {
     DiagramsPlugin,
     MarkdownITMermaidPlugin
-} from '@akashacms/diagrams-makers';
+} from '@akashacms/diagram-makers';
 
 config.use(DiagramsPlugin);
 
@@ -461,5 +461,16 @@ The options are:
 These options apply to every `<diagrams-mermaid>` element in the project.
 
 Currently, the usage is as shown here, with `input-file` and `output-file` options.  Additionally, `id`, `class`, `alt`, `title`, and `caption` options are available, and pass into the rendered HTML using the template shown earlier.
+
+The `output-file` attribute is optional.  When omitted, the rendered SVG is inserted inline in the generated HTML instead of being written to a file and referenced with `<img>`:
+
+```html
+<figure id="..." class="..." title="...">
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="..."> ... </svg>
+<figcaption>...</figcaption>
+</figure>
+```
+
+In inline mode there is no `<img>` element to carry the `alt`, `title`, and `width` attributes, so they are placed differently: `alt` becomes an `aria-label` on the SVG root (which is marked `role="img"` for accessibility), `width` replaces the SVG root's width (the height is dropped, letting the `viewBox` preserve the aspect ratio), and `title` is placed on the `<figure>`.
 
 In all cases, the Mermaid document is rendered in SVG format.
