@@ -8,7 +8,7 @@ import util from 'node:util';
 
 // import packageConfig from '../package.json' with { type: 'json' }; 
 
-import { doPlantUMLOptions, doPlantUMLLocal, isValidCharset, PintoraRenderOptions, doPintora } from './index.js';
+import { doPlantUMLOptions, doPlantUMLLocal, isValidCharset, PintoraRenderOptions, doPintora, MermaidRenderOptions, doMermaid } from './index.js';
 
 import { Command } from 'commander';
 const program = new Command();
@@ -295,5 +295,49 @@ program
         await doPintora(opts);
     });
 
+
+program
+    .command('mermaid')
+    .description('Render Mermaid files to SVG')
+    .option('--input-file <inputFN>', 'Path for document to render')
+    .option('--output-file <outputFN>', 'Path for rendered SVG document')
+    .option('--config <configFN>', 'Path for a JSON config file (theme, themeVariables, flowchart, ...)')
+    .option('--theme <theme>', 'Theme preset: default, dark, forest, neutral, or modern')
+    .option('--font <fontFN...>', 'TTF/OTF font file(s) to register for text measurement')
+    .action(async (cmdObj) => {
+        const opts: MermaidRenderOptions = {
+            code: '',
+            outputFN: ''
+        };
+
+        if (typeof cmdObj.inputFile === 'string') {
+            opts.code = await fsp.readFile(cmdObj.inputFile, 'utf-8');
+        } else {
+            throw new Error('No input file specified');
+        }
+
+        if (typeof cmdObj.outputFile === 'string') {
+            opts.outputFN = cmdObj.outputFile;
+        } else {
+            throw new Error('No output file specified');
+        }
+        if (!opts.outputFN.endsWith('.svg')) {
+            throw new Error(`mermaid output-file must have .svg extension ${util.inspect(opts.outputFN)}`);
+        }
+
+        if (typeof cmdObj.config === 'string') {
+            opts.configJSON = await fsp.readFile(cmdObj.config, 'utf-8');
+        }
+
+        if (typeof cmdObj.theme === 'string') {
+            opts.themePreset = cmdObj.theme;
+        }
+
+        if (Array.isArray(cmdObj.font)) {
+            opts.fontFNs = cmdObj.font;
+        }
+
+        await doMermaid(opts);
+    });
 
 program.parse();
