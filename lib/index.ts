@@ -22,7 +22,7 @@ const plantumlJar = path.join(
                 'plantuml',
                 'plantuml-mit-1.2025.0.jar');
 
-const pluginName = '@akashacms/plugins-diagrams';
+const pluginName = '@akashacms/diagram-makers';
 
 import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
@@ -97,7 +97,7 @@ export class DiagramsPlugin extends Plugin {
         let moduleDirname = import.meta.dirname;
         config.addAssetsDir(path.join(moduleDirname, '..', 'assets'));
         config.addStylesheet({
-            href: '/vendor/@akashacms/diagrams-maker/style.css'
+            href: '/vendor/@akashacms/diagram-makers/style.css'
         });
     }
 
