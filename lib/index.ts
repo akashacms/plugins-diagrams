@@ -29,6 +29,7 @@ import { Plugin } from 'akasharender/dist/Plugin.js';
 const mahabhuta = akasha.mahabhuta;
 
 import {
+    adaptInlineSvg,
     doMermaid,
     registerMermaidFonts,
     renderMermaidSvg
@@ -258,17 +259,19 @@ ${code}
         const Tid = typeof id === 'string'
             ? `id="${encode(id)}"`
             : '';
+        // The diagrams-mermaid class carries the stylesheet rules
+        // constraining the diagram to its container (issue #19).
         const Tclazz = typeof clazz === 'string'
-            ? `class="${encode(clazz)}"`
-            : '';
+            ? `class="diagrams-mermaid ${encode(clazz)}"`
+            : `class="diagrams-mermaid"`;
         const Twidth = typeof width === 'number'
             ? `width="${width.toString()}"`
             : '';
 
         // In inline mode there is no <img> to carry the alt, title,
         // and width attributes.  The alt text becomes an aria-label
-        // on the SVG root, the width resizes the SVG root, and the
-        // title lands on the <figure>.
+        // on the SVG root, the width becomes a width style on the
+        // SVG root, and the title lands on the <figure>.
         const ret = inlineMode
             ? `
         <figure ${Tid} ${Tclazz} ${Ttitle}>
@@ -296,31 +299,7 @@ ${code}
     }
 }
 
-/**
- * Adjust the root element of a rendered SVG for inline embedding.
- *
- * When a width is given, the root width attribute is replaced and
- * the height attribute removed, so the viewBox preserves the aspect
- * ratio.  The alt text, when given, becomes an aria-label; the SVG
- * is marked role="img" for accessibility either way.
- */
-function adaptInlineSvg(
-    svg: string, width?: number, alt?: string
-): string {
-    return svg.replace(/^<svg([^>]*)>/, (_m, attrs) => {
-        let adjusted = attrs;
-        if (typeof width === 'number') {
-            adjusted = adjusted
-                .replace(/\swidth="[^"]*"/, ` width="${width}"`)
-                .replace(/\sheight="[^"]*"/, '');
-        }
-        let extra = ' role="img"';
-        if (typeof alt === 'string') {
-            extra += ` aria-label="${encode(alt)}"`;
-        }
-        return `<svg${adjusted}${extra}>`;
-    });
-}
+
 
 export type PintoraRenderOptions = {
     /**

@@ -1,5 +1,6 @@
 import { encode } from 'html-entities';
 import {
+    adaptInlineSvg,
     registerMermaidFonts,
     renderMermaidSvg
 } from './render-mermaid.js';
@@ -75,7 +76,7 @@ export function MarkdownITMermaidPlugin(md, opts?: MermaidPluginOptions) {
                     ? `<figcaption>${encode(title)}</figcaption>`
                     : '';
                 return `<figure class="diagrams-mermaid">
-${svg}
+${adaptInlineSvg(svg)}
 ${cap}
 </figure>
 `;
