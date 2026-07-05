@@ -696,6 +696,25 @@ export function plantumlEncode(diagram: string): string {
 }
 
 /**
+ * Guard against diagram text that PlantUML would not
+ * render correctly.  In -pipe mode the JAR silently emits
+ * a "Welcome to PlantUML" placeholder image, with a zero
+ * exit code, when the input has no complete
+ * @start...@end block, while a PlantUML server tolerates
+ * an incomplete block - so the two backends silently
+ * disagree.  Failing loudly makes the authoring mistake
+ * visible regardless of backend.
+ */
+function checkDiagramComplete(diagram: string, source: string) {
+    if (!/^\s*@start\w/m.test(diagram)) {
+        throw new Error(`plantuml - the diagram from ${source} has no @start line (such as @startuml)`);
+    }
+    if (!/^\s*@end\w/m.test(diagram)) {
+        throw new Error(`plantuml - the diagram from ${source} has no @end line (such as @enduml)`);
+    }
+}
+
+/**
  * Render a PlantUML diagram by sending it to a PlantUML
  * server.  The server URL comes from the serverURL option
  * or the PLANTUML_SERVER_URL environment variable.
@@ -736,6 +755,7 @@ export async function doPlantUMLServer(
     else format = 'png';
 
     let diagram;
+    let source;
     if (Array.isArray(options.inputFNs)
      && options.inputFNs.length > 1
     ) {
@@ -743,14 +763,17 @@ export async function doPlantUMLServer(
     } else if (Array.isArray(options.inputFNs)
      && options.inputFNs.length === 1
     ) {
-        diagram = await fsp.readFile(options.inputFNs[0], 'utf-8');
+        source = options.inputFNs[0];
+        diagram = await fsp.readFile(source, 'utf-8');
     } else if (typeof options.inputBody === 'string'
      && options.inputBody.length >= 1
     ) {
+        source = 'the inline diagram body';
         diagram = options.inputBody;
     } else {
         throw new Error(`plantuml server - no input sources`);
     }
+    checkDiagramComplete(diagram, source);
 
     const url = `${serverURL.replace(/\/+$/, '')}/${format}/${plantumlEncode(diagram)}`;
 
@@ -893,8 +916,18 @@ export async function doPlantUMLLocal(
       && typeof options.inputBody === 'string')
      || (Array.isArray(options.inputFNs)
       && options.inputFNs.length === 1);
+    let pipeInput;
     if (pipeMode) {
         args.push('-pipe');
+        if (Array.isArray(options.inputFNs)
+         && options.inputFNs.length === 1
+        ) {
+            pipeInput = await fsp.readFile(options.inputFNs[0], 'utf-8');
+            checkDiagramComplete(pipeInput, options.inputFNs[0]);
+        } else {
+            pipeInput = options.inputBody;
+            checkDiagramComplete(pipeInput, 'the inline diagram body');
+        }
     }
 
     if (Array.isArray(options.inputFNs)
@@ -929,16 +962,8 @@ export async function doPlantUMLLocal(
 
     let chunks: Buffer[] | undefined;
     if (pipeMode) {
-        // The input is either the inputBody or the
-        // single named input file
-        if (Array.isArray(options.inputFNs)
-         && options.inputFNs.length === 1
-        ) {
-            fs.createReadStream(options.inputFNs[0]).pipe(child.stdin);
-        } else {
-            child.stdin.write(options.inputBody);
-            child.stdin.end();
-        }
+        child.stdin.write(pipeInput);
+        child.stdin.end();
         // The output goes either to the named output
         // file or into a Buffer that is returned
         if (typeof options.outputFN === 'string'
