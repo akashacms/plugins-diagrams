@@ -644,8 +644,15 @@ export type doPlantUMLOptions = {
  * variable), the diagram is rendered locally by running
  * the JAR with Java.  If neither is available, an error
  * is thrown directing the user to the README.
+ *
+ * In the single-input modes (inputBody or one entry in
+ * inputFNs), when no outputFN is given the rendered
+ * output is returned as a Buffer instead of being
+ * written to a file.
  */
-export async function doPlantUML(options: doPlantUMLOptions) {
+export async function doPlantUML(
+    options: doPlantUMLOptions
+): Promise<Buffer | undefined> {
     const serverURL = options.serverURL
             ?? process.env.PLANTUML_SERVER_URL;
     const jarPath = options.jarPath
@@ -695,12 +702,15 @@ export function plantumlEncode(diagram: string): string {
  * The server supports a subset of the JAR's features:
  * PNG (tpng, the default), SVG (tsvg), and ASCII art
  * (ttxt) output formats.  The input is either inputBody
- * or a single entry in inputFNs, and outputFN is
- * required.  Options that only make sense for the JAR
- * (darkmode, charset, nbthread, outputDir, and the other
- * output formats) are not supported.
+ * or a single entry in inputFNs.  The rendered output is
+ * written to outputFN when given, and returned as a
+ * Buffer otherwise.  Options that only make sense for
+ * the JAR (darkmode, charset, nbthread, outputDir, and
+ * the other output formats) are not supported.
  */
-export async function doPlantUMLServer(options: doPlantUMLOptions) {
+export async function doPlantUMLServer(
+    options: doPlantUMLOptions
+): Promise<Buffer | undefined> {
     const serverURL = options.serverURL
             ?? process.env.PLANTUML_SERVER_URL;
     if (typeof serverURL !== 'string' || serverURL.length < 1) {
@@ -741,12 +751,6 @@ export async function doPlantUMLServer(options: doPlantUMLOptions) {
         throw new Error(`plantuml server - no input sources`);
     }
 
-    if (typeof options.outputFN !== 'string'
-     || options.outputFN.length < 1
-    ) {
-        throw new Error(`plantuml server - no output file`);
-    }
-
     const url = `${serverURL.replace(/\/+$/, '')}/${format}/${plantumlEncode(diagram)}`;
 
     let res;
@@ -764,10 +768,18 @@ export async function doPlantUMLServer(options: doPlantUMLOptions) {
     }
 
     const buf = Buffer.from(await res.arrayBuffer());
-    await fsp.writeFile(options.outputFN, buf);
+    if (typeof options.outputFN === 'string'
+     && options.outputFN.length >= 1
+    ) {
+        await fsp.writeFile(options.outputFN, buf);
+        return undefined;
+    }
+    return buf;
 }
 
-export async function doPlantUMLLocal(options) {
+export async function doPlantUMLLocal(
+    options: doPlantUMLOptions
+): Promise<Buffer | undefined> {
 
     const plantumlJar = options.jarPath
             ?? process.env.PLANTUML_JAR;
@@ -847,24 +859,18 @@ export async function doPlantUMLLocal(options) {
         args.push('-verbose');
     }
 
-    // 0 inputFNs requires inputBody, requires outputFN
+    // 0 inputFNs requires inputBody
     // child.stdin.write/end with inputBody
-    // child.stdout.pipe(fs.createWriteStream(outputFN))
     // -pipe
     //
-    // 1 inputFN, no/ignore inputBody, requires outputFN
-    // fs.createReadStream(inputFN).pipe(child.stdin) ??
-    // child.stdout.pipe(fs.createWriteStream(outputFN))
+    // 1 inputFN, no/ignore inputBody
+    // fs.createReadStream(inputFN).pipe(child.stdin)
     // -pipe
     //
-    // IGNORE
-    // IGNORE either 0 input FNs & inputBody, or 1 inputFN
-    // IGNORE no outputFN
-    // IGNORE -tsvg set
-    // IGNORE Read stdout into a Buffer, that's converted to string
-    // IGNORE -pipe
-    // IGNORE Return the string
-    // SEE https://stackoverflow.com/questions/14269233/node-js-how-to-read-a-stream-into-a-buffer
+    // In both -pipe cases, child.stdout goes to
+    // fs.createWriteStream(outputFN) when outputFN is
+    // given, and is otherwise collected into a Buffer
+    // that is returned.
     //
     // multiple inputFNs .. optional output-dir's
     // Both go on the command-line
@@ -878,34 +884,15 @@ export async function doPlantUMLLocal(options) {
     ) {
         throw new Error(`plantuml - no input sources`);
     }
-    if (typeof options.inputFNs === 'undefined'
-     && !Array.isArray(options.inputFNs)
-     && typeof options.inputBody === 'string'
-     && typeof options.outputFN !== 'string'
-    ) {
-        throw new Error(`plantuml - with inputBody, no output destination`);
-    }
-    // No file names, but an inputBody, and an output file,
-    // means we're piping
-    if (typeof options.inputFNs === 'undefined'
-     && !Array.isArray(options.inputFNs)
-     && typeof options.inputBody === 'string'
-     && typeof options.outputFN === 'string'
-    ) {
-        args.push('-pipe');
-    }
-    if (Array.isArray(options.inputFNs)
-     && options.inputFNs.length === 1
-     && typeof options.outputFN !== 'string'
-    ) {
-        throw new Error(`plantuml - with one input file ${options.inputFNs[0]} no output file`);
-    }
-    // One file names, ignore inputBody, and an output file,
-    // means we're piping
-    if (Array.isArray(options.inputFNs)
-     && options.inputFNs.length === 1
-     && typeof options.outputFN === 'string'
-    ) {
+    // An inputBody with no file names, or a single file
+    // name, means we're piping
+    const pipeMode =
+        (typeof options.inputFNs === 'undefined'
+      && !Array.isArray(options.inputFNs)
+      && typeof options.inputBody === 'string')
+     || (Array.isArray(options.inputFNs)
+      && options.inputFNs.length === 1);
+    if (pipeMode) {
         args.push('-pipe');
     }
 
@@ -939,29 +926,30 @@ export async function doPlantUMLLocal(options) {
     // Next, set up stdin/stdout pipes in case
     // of using -pipe mode
 
-    // No input files, with inputBody, and outputFN,
-    // set up the piping from input to output
-    if (typeof options.inputFNs === 'undefined'
-     && !Array.isArray(options.inputFNs)
-     && typeof options.inputBody === 'string'
-     && typeof options.outputFN === 'string'
-    ) {
-        child.stdin.write(options.inputBody);
-        child.stdout.pipe(fs.createWriteStream(options.outputFN));
-        child.stdin.end();
-    }
-
-    // One file names, ignore inputBody, and an output file,
-    // set up the piping from input to output
-    if (Array.isArray(options.inputFNs)
-     && options.inputFNs.length === 1
-     && typeof options.outputFN === 'string'
-    ) {
-        // const inp = await fsp.readFile(options.inputFNs[0], 'utf-8');
-        // child.stdin.write(inp);
-        fs.createReadStream(options.inputFNs[0]).pipe(child.stdin);
-        child.stdout.pipe(fs.createWriteStream(options.outputFN));
-        // child.stdin.end();
+    let chunks: Buffer[] | undefined;
+    if (pipeMode) {
+        // The input is either the inputBody or the
+        // single named input file
+        if (Array.isArray(options.inputFNs)
+         && options.inputFNs.length === 1
+        ) {
+            fs.createReadStream(options.inputFNs[0]).pipe(child.stdin);
+        } else {
+            child.stdin.write(options.inputBody);
+            child.stdin.end();
+        }
+        // The output goes either to the named output
+        // file or into a Buffer that is returned
+        if (typeof options.outputFN === 'string'
+         && options.outputFN.length >= 1
+        ) {
+            child.stdout.pipe(fs.createWriteStream(options.outputFN));
+        } else {
+            chunks = [];
+            child.stdout.on('data', (chunk) => {
+                chunks.push(chunk);
+            });
+        }
     }
 
     // Finally, wait for the child to finish
@@ -980,6 +968,7 @@ export async function doPlantUMLLocal(options) {
         });
     });
 
+    return chunks ? Buffer.concat(chunks) : undefined;
 }
 
 /**
@@ -1002,6 +991,10 @@ export async function doPlantUMLLocal(options) {
  * isAbsolute(output-file) - means it is rooted
  * to the output directory.  Otherwise it is relative
  * to the dirname(metadata.document.path).
+ * 
+ * When there is no output-file attribute, the diagram
+ * is rendered as inline SVG embedded in the generated
+ * HTML.  This mode requires the tsvg output format.
  */
 class PlantUMLLocal extends akasha.CustomElement {
 
@@ -1070,25 +1063,31 @@ class PlantUMLLocal extends akasha.CustomElement {
         // as the inputFNs entry
         if (fspathIn) options.inputFNs = [ fspathIn ];
 
-        if (typeof options.outputFN !== 'string') {
-            throw new Error(`PlantUMLLocal no output file name was supplied`);
-        }
+        // With no output-file attribute, the rendered SVG is
+        // inserted inline in the generated HTML rather than
+        // written to a file and referenced with <img>.
+        const inlineMode = typeof options.outputFN !== 'string'
+                        || options.outputFN.length < 1;
 
         let vpathOut;
-        if (! path.isAbsolute(options.outputFN)) {
-            let dir = path.dirname(metadata.document.path);
-            vpathOut = path.normalize(
-                path.join('/', dir, options.outputFN)
-            );
-        } else {
-            vpathOut = options.outputFN;
-        }
+        if (!inlineMode) {
+            if (! path.isAbsolute(options.outputFN)) {
+                let dir = path.dirname(metadata.document.path);
+                vpathOut = path.normalize(
+                    path.join('/', dir, options.outputFN)
+                );
+            } else {
+                vpathOut = options.outputFN;
+            }
 
-        // Compute fspath for vpathOut
-        const fspathOut = path.normalize(path.join(
-            this.array.options.config.renderDestination, vpathOut
-        ));
-        options.outputFN = fspathOut;
+            // Compute fspath for vpathOut
+            const fspathOut = path.normalize(path.join(
+                this.array.options.config.renderDestination, vpathOut
+            ));
+            options.outputFN = fspathOut;
+        } else {
+            options.outputFN = undefined;
+        }
 
         let width = $element.attr('width');
         // console.log(`width=${width}`);
@@ -1134,7 +1133,11 @@ class PlantUMLLocal extends akasha.CustomElement {
         if (!options.tpng && !options.tsvg) {
             throw new Error(`PlantUMLLocal must use one of tpng or tsvg`);
         }
-        await doPlantUML(options);
+        if (inlineMode && !options.tsvg) {
+            throw new Error(`PlantUMLLocal without output-file renders inline SVG, which requires tsvg`);
+        }
+
+        const buf = await doPlantUML(options);
 
         const cap = typeof caption === 'string'
             ? `<figcaption>${encode(caption)}</figcaption>`
@@ -1148,14 +1151,32 @@ class PlantUMLLocal extends akasha.CustomElement {
         const Tid = typeof id === 'string'
             ? `id="${encode(id)}"`
             : '';
+        // The diagrams-plantuml class carries the stylesheet
+        // rules constraining the diagram to its container.
         const Tclazz = typeof clazz === 'string'
-            ? `class="${encode(clazz)}"`
-            : '';
+            ? `class="diagrams-plantuml ${encode(clazz)}"`
+            : `class="diagrams-plantuml"`;
         const Twidth = typeof width === 'number'
             ? `width="${width.toString()}"`
             : '';
 
-        const ret = `
+        // In inline mode there is no <img> to carry the alt,
+        // title, and width attributes.  The alt text becomes
+        // an aria-label on the SVG root, the width becomes a
+        // width style on the SVG root, and the title lands on
+        // the <figure>.  The XML prologue emitted by PlantUML
+        // is stripped for embedding in HTML.
+        const ret = inlineMode
+            ? `
+        <figure ${Tid} ${Tclazz} ${Ttitle}>
+        ${adaptInlineSvg(
+            buf.toString('utf-8').replace(/^\s*<\?xml[^>]*\?>\s*/, ''),
+            typeof width === 'number' ? width : undefined,
+            typeof alt === 'string' ? alt : undefined)}
+        ${cap}
+        </figure>
+        `
+            : `
         <figure ${Tid} ${Tclazz}>
         <img src="${encode(vpathOut)}" ${Talt} ${Ttitle} ${Twidth}/>
         ${cap}

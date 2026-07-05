@@ -79,23 +79,40 @@ export function renderMermaidSvg(
  * When an explicit width is given, it becomes a width style
  * instead, overriding any stylesheet sizing.
  *
+ * An existing style attribute on the SVG root (PlantUML emits
+ * one carrying width, height, and background) is merged: its
+ * width and height declarations are superseded by the sizing
+ * computed here, while other declarations such as background
+ * survive.
+ *
  * The alt text, when given, becomes an aria-label; the SVG is
  * marked role="img" for accessibility either way.
  */
 export function adaptInlineSvg(
     svg: string, width?: number, alt?: string
 ): string {
-    return svg.replace(/^<svg([^>]*)>/, (_m, attrs) => {
-        const naturalWidth = attrs.match(/\swidth="([^"]*)"/)?.[1];
+    return svg.replace(/<svg([^>]*)>/, (_m, attrs) => {
+        // The width attribute may carry a unit suffix,
+        // such as PlantUML's width="123px".
+        const naturalWidth = Number.parseFloat(
+            attrs.match(/\swidth="([^"]*)"/)?.[1]);
+        const style = (attrs.match(/\sstyle="([^"]*)"/)?.[1] ?? '')
+            .split(';')
+            .map(decl => decl.trim())
+            .filter(decl => decl.length >= 1
+                && !/^(width|height)\s*:/.test(decl));
         let adjusted = attrs
             .replace(/\swidth="[^"]*"/, '')
-            .replace(/\sheight="[^"]*"/, '');
-        let extra = '';
+            .replace(/\sheight="[^"]*"/, '')
+            .replace(/\sstyle="[^"]*"/, '');
         if (typeof width === 'number') {
-            extra += ` style="width: ${width}px"`;
-        } else if (naturalWidth) {
-            extra += ` style="max-width: ${naturalWidth}px"`;
+            style.push(`width: ${width}px`);
+        } else if (!Number.isNaN(naturalWidth)) {
+            style.push(`max-width: ${naturalWidth}px`);
         }
+        let extra = style.length >= 1
+            ? ` style="${style.join('; ')}"`
+            : '';
         extra += ' role="img"';
         if (typeof alt === 'string') {
             extra += ` aria-label="${encode(alt)}"`;

@@ -30,6 +30,12 @@ export declare function renderMermaidSvg(code: string, configJSON?: string, them
  * When an explicit width is given, it becomes a width style
  * instead, overriding any stylesheet sizing.
  *
+ * An existing style attribute on the SVG root (PlantUML emits
+ * one carrying width, height, and background) is merged: its
+ * width and height declarations are superseded by the sizing
+ * computed here, while other declarations such as background
+ * survive.
+ *
  * The alt text, when given, becomes an aria-label; the SVG is
  * marked role="img" for accessibility either way.
  */

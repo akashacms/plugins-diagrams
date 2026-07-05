@@ -183,8 +183,13 @@ export type doPlantUMLOptions = {
  * variable), the diagram is rendered locally by running
  * the JAR with Java.  If neither is available, an error
  * is thrown directing the user to the README.
+ *
+ * In the single-input modes (inputBody or one entry in
+ * inputFNs), when no outputFN is given the rendered
+ * output is returned as a Buffer instead of being
+ * written to a file.
  */
-export declare function doPlantUML(options: doPlantUMLOptions): Promise<void>;
+export declare function doPlantUML(options: doPlantUMLOptions): Promise<Buffer | undefined>;
 /**
  * Encode PlantUML diagram text for use in a PlantUML
  * server URL, as documented at
@@ -200,12 +205,13 @@ export declare function plantumlEncode(diagram: string): string;
  * The server supports a subset of the JAR's features:
  * PNG (tpng, the default), SVG (tsvg), and ASCII art
  * (ttxt) output formats.  The input is either inputBody
- * or a single entry in inputFNs, and outputFN is
- * required.  Options that only make sense for the JAR
- * (darkmode, charset, nbthread, outputDir, and the other
- * output formats) are not supported.
+ * or a single entry in inputFNs.  The rendered output is
+ * written to outputFN when given, and returned as a
+ * Buffer otherwise.  Options that only make sense for
+ * the JAR (darkmode, charset, nbthread, outputDir, and
+ * the other output formats) are not supported.
  */
-export declare function doPlantUMLServer(options: doPlantUMLOptions): Promise<void>;
-export declare function doPlantUMLLocal(options: any): Promise<void>;
+export declare function doPlantUMLServer(options: doPlantUMLOptions): Promise<Buffer | undefined>;
+export declare function doPlantUMLLocal(options: doPlantUMLOptions): Promise<Buffer | undefined>;
 export declare function isValidCharset(charset: any): boolean;
 //# sourceMappingURL=index.d.ts.map

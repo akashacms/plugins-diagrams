@@ -234,7 +234,13 @@ program
             options.verbose = cmdObj.verbose;
         }
 
-        await doPlantUML(options);
+        // In the single-input modes, when no --output-file is
+        // given the rendered output is returned as a Buffer,
+        // which is written to stdout.
+        const buf = await doPlantUML(options);
+        if (buf) {
+            process.stdout.write(buf);
+        }
     });
 
 // The editions of the PlantUML JAR published on the

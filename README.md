@@ -166,6 +166,13 @@ $ npx diagram-makers plantuml \
 
 This converts the PlantUML diagram in the named file into a PNG.
 
+When `--output-file` is not given, the rendered output is written to standard output, so the command can be used in a pipeline:
+
+```shell
+$ npx diagram-makers plantuml \
+      --input-file flight.puml --tsvg > flight.svg
+```
+
 The `--input-file` parameter can be used multiple times.  In that case, the parameters are treated as the `[file/dir] [file/dir] [file/dir]` parameters for `plantuml.jar`.  The `--output-file` parameter, if given, is ignored in this case.  You may use the `--output-dir` parameter to affect where the files land.
 
 ```shell
@@ -325,9 +332,18 @@ The `inputFNs` is an array treated similarly to the `--input-file` parameter for
 
 There are three modes for treating inputs and outputs:
 
-* No `inputFNs`, in which case `inputBody` is output to the `outputFN` which is required.
-* One entry in the `inputFNs` which is output to the `outputFN` which is required.
+* No `inputFNs`, in which case `inputBody` is the diagram source.
+* One entry in the `inputFNs`, which is the diagram source.
 * Multiple entries in the `inputFNs`, and the output location is influenced by `outputDir`.  This mode requires the JAR backend.
+
+In the first two modes, the rendered output is written to `outputFN` when given, and returned as a `Buffer` otherwise:
+
+```js
+const svg = (await doPlantUML({
+  inputBody: '@startuml ... @enduml',
+  tsvg: true
+})).toString('utf-8');
+```
 
 ## API - Mermaid
 
@@ -447,6 +463,26 @@ The diagram can also be in the filesystem:
 The `input-file` path must be a virtual path within either an `assets` or `documents` directory.
 
 If the `input-file` is an absolute pathname, it is relative to the root of the virtual filespace of the AkashaCMS project configuration.  A relative pathname is relative to the file being rendered.
+
+The `output-file` attribute is optional.  When omitted, the rendered SVG is inserted inline in the generated HTML instead of being written to a file and referenced with `<img>`:
+
+```html
+<diagrams-plantuml input-file="./puml-use-cases.puml" tsvg/>
+```
+
+Inline mode requires the `tsvg` output format - a PNG cannot be embedded this way.  The generated HTML is:
+
+```html
+<figure id="..." class="diagrams-plantuml ..." title="...">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="..."
+     style="background:#FFFFFF; max-width: ...px" role="img" aria-label="..."> ... </svg>
+<figcaption>...</figcaption>
+</figure>
+```
+
+In inline mode there is no `<img>` element to carry the `alt`, `title`, and `width` attributes, so they are placed differently: `alt` becomes an `aria-label` on the SVG root (which is marked `role="img"` for accessibility), `width` becomes a `width` style on the SVG root, and `title` is placed on the `<figure>`.
+
+In both modes the generated `<figure>` carries the `diagrams-plantuml` class, whose stylesheet rules constrain the diagram to its container, in the same manner as described for Mermaid in the section _Constraining diagram size on the web page_.
 
 ### Pintora diagrams in an AkashaCMS project
 
