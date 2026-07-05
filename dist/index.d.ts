@@ -1,5 +1,5 @@
 import { PintoraConfig } from '@pintora/cli';
-export { MarkdownITMermaidPlugin, MermaidPluginOptions } from './markdown-it.js';
+export { MarkdownITMermaidPlugin, MarkdownITPlantUMLPlugin, MermaidPluginOptions } from './markdown-it.js';
 import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
 export { MermaidRenderOptions, doMermaid, renderMermaidSvg, registerMermaidFonts } from './render-mermaid.js';

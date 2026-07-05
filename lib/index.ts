@@ -10,6 +10,7 @@ import { render, PintoraConfig } from '@pintora/cli'
 
 export {
     MarkdownITMermaidPlugin,
+    MarkdownITPlantUMLPlugin,
     MermaidPluginOptions
 } from './markdown-it.js';
 

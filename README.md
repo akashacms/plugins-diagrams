@@ -388,14 +388,15 @@ Rendering happens in-process through [mermaid-wasm-renderer](https://github.com/
 
 ## Usage - AkashaCMS project
 
-The `@akashacms/diagram-makers` package includes an AkashaCMS plugin, as well as a Markdown-IT plugin supporting Mermaid.
+The `@akashacms/diagram-makers` package includes an AkashaCMS plugin, as well as Markdown-IT plugins supporting Mermaid and PlantUML code fences.
 
 Setup, configuration:
 
 ```js
 import {
     DiagramsPlugin,
-    MarkdownITMermaidPlugin
+    MarkdownITMermaidPlugin,
+    MarkdownITPlantUMLPlugin
 } from '@akashacms/diagram-makers';
 
 config.use(DiagramsPlugin);
@@ -406,7 +407,8 @@ config.findRendererName('.html.md')
     themePreset: 'forest',
     configJSON: await fsp.readFile('mermaid-config.json', 'utf-8'),
     fontFNs: [ '/path/to/Roboto.ttf' ]
-});
+})
+.use(MarkdownITPlantUMLPlugin);
 ```
 
 The options for `MarkdownITMermaidPlugin` are:
@@ -483,6 +485,25 @@ Inline mode requires the `tsvg` output format - a PNG cannot be embedded this wa
 In inline mode there is no `<img>` element to carry the `alt`, `title`, and `width` attributes, so they are placed differently: `alt` becomes an `aria-label` on the SVG root (which is marked `role="img"` for accessibility), `width` becomes a `width` style on the SVG root, and `title` is placed on the `<figure>`.
 
 In both modes the generated `<figure>` carries the `diagrams-plantuml` class, whose stylesheet rules constrain the diagram to its container, in the same manner as described for Mermaid in the section _Constraining diagram size on the web page_.
+
+### PlantUML code fences in Markdown documents
+
+With `MarkdownITPlantUMLPlugin` added to Markdown-IT as shown above, a PlantUML diagram can be written in a code fence, and is rendered as inline SVG:
+
+    ```plantuml optional title goes here
+    Alice -> Bob : hello
+    ```
+
+In other words, within a 3-backtick fence labeled with the language `plantuml`, you place a PlantUML document.  You may also use a three-tilde fence (`~~~plantuml`) if you prefer.
+
+A figure caption can be included by adding a space after `plantuml` then adding the caption text.
+
+When the diagram text does not begin with a `@start` line, it is automatically wrapped in `@startuml`/`@enduml`.  Diagram types requiring other markers, such as `@startmindmap` or `@startgantt`, spell those out and are passed through unchanged.
+
+Behind the scenes the fence is converted into a `<diagrams-plantuml tsvg>` element, which is then rendered to inline SVG as described in the previous section.  Because PlantUML rendering is asynchronous (a PlantUML server request or a child Java process) while Markdown-IT rendering is synchronous, the actual rendering happens during Mahabhuta processing.  Consequently:
+
+* This plugin requires the AkashaCMS rendering pipeline with `DiagramsPlugin` configured - unlike `MarkdownITMermaidPlugin`, it does not work with standalone Markdown-IT.
+* The PlantUML rendering backend must be configured, as described in the section _Setting up PlantUML rendering_.
 
 ### Pintora diagrams in an AkashaCMS project
 
