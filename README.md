@@ -406,12 +406,14 @@ Behind the scenes the diagram text is rendered directly to SVG, in-process, usin
 
 ```html
 <figure class="diagrams-mermaid">
-<svg xmlns="http://www.w3.org/2000/svg" ...> ... </svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="..." style="max-width: ...px" role="img"> ... </svg>
 ${cap}
 </figure>
 ```
 
 The optional title text ends up in the `${cap}` field of the template as `<figcaption>${encode(title)}</figcaption>`.
+
+The SVG root's fixed pixel `width=`/`height=` attributes are removed so the diagram can be constrained to its container; see the section _Constraining diagram size on the web page_ below.
 
 If the diagram fails to render, for example from a syntax error, an error message is printed on the console, and the generated HTML contains a `<div class="diagrams-render-error">` describing the error along with the diagram text.
 
@@ -465,12 +467,45 @@ Currently, the usage is as shown here, with `input-file` and `output-file` optio
 The `output-file` attribute is optional.  When omitted, the rendered SVG is inserted inline in the generated HTML instead of being written to a file and referenced with `<img>`:
 
 ```html
-<figure id="..." class="..." title="...">
-<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="..."> ... </svg>
+<figure id="..." class="diagrams-mermaid ..." title="...">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="..."
+     style="max-width: ...px" role="img" aria-label="..."> ... </svg>
 <figcaption>...</figcaption>
 </figure>
 ```
 
-In inline mode there is no `<img>` element to carry the `alt`, `title`, and `width` attributes, so they are placed differently: `alt` becomes an `aria-label` on the SVG root (which is marked `role="img"` for accessibility), `width` replaces the SVG root's width (the height is dropped, letting the `viewBox` preserve the aspect ratio), and `title` is placed on the `<figure>`.
+In inline mode there is no `<img>` element to carry the `alt`, `title`, and `width` attributes, so they are placed differently: `alt` becomes an `aria-label` on the SVG root (which is marked `role="img"` for accessibility), `width` becomes a `width` style on the SVG root, and `title` is placed on the `<figure>`.
+
+### Constraining diagram size on the web page
+
+The renderer emits fixed pixel `width=` and `height=` attributes on the SVG root, which would let wide diagrams overflow their container (such as an `<article>` column).  To prevent that, the generated HTML is adjusted as follows:
+
+* The `width=` and `height=` attributes are removed from the SVG root; the `viewBox` preserves the aspect ratio.
+* The diagram's natural width is carried as a `max-width` inline style, so stylesheet sizing cannot upscale a small diagram beyond its natural size.
+* Every generated `<figure>` carries the `diagrams-mermaid` class, in both inline and `output-file` modes, and in the Markdown-IT plugin output.
+
+The plugin's stylesheet (added automatically to AkashaCMS projects) completes the arrangement:
+
+```css
+figure.diagrams-mermaid {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+figure.diagrams-mermaid svg {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+}
+
+figure.diagrams-mermaid img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+```
+
+When using `MarkdownITMermaidPlugin` outside of AkashaCMS, add equivalent rules to the site's own stylesheet.
 
 In all cases, the Mermaid document is rendered in SVG format.

@@ -16,6 +16,24 @@ export declare function registerMermaidFont(): void;
  * Render Mermaid diagram text to an SVG string.
  */
 export declare function renderMermaidSvg(code: string, configJSON?: string, themePreset?: string): string;
+/**
+ * Adjust the root element of a rendered SVG for inline embedding
+ * in a web page.
+ *
+ * The renderer emits fixed pixel width= and height= attributes,
+ * which overflow narrow containers.  Those attributes are removed
+ * (the viewBox preserves the aspect ratio) and replaced with a
+ * max-width style holding the diagram's natural width, so that
+ * stylesheet rules like `width: 100%; height: auto` constrain the
+ * diagram to its container without upscaling small diagrams.
+ *
+ * When an explicit width is given, it becomes a width style
+ * instead, overriding any stylesheet sizing.
+ *
+ * The alt text, when given, becomes an aria-label; the SVG is
+ * marked role="img" for accessibility either way.
+ */
+export declare function adaptInlineSvg(svg: string, width?: number, alt?: string): string;
 export type MermaidRenderOptions = {
     /**
      * Mermaid diagram text to render

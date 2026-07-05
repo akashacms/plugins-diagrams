@@ -1,5 +1,6 @@
 
 import fs, { promises as fsp } from 'node:fs';
+import { encode } from 'html-entities';
 import { renderSvg, renderSvgWithConfig, registerFont } from 'mermaid-wasm-renderer';
 
 // The WASM renderer cannot see the filesystem, so for exact text
@@ -62,6 +63,45 @@ export function renderMermaidSvg(
     return (configJSON || themePreset)
         ? renderSvgWithConfig(code, configJSON, themePreset)
         : renderSvg(code);
+}
+
+/**
+ * Adjust the root element of a rendered SVG for inline embedding
+ * in a web page.
+ *
+ * The renderer emits fixed pixel width= and height= attributes,
+ * which overflow narrow containers.  Those attributes are removed
+ * (the viewBox preserves the aspect ratio) and replaced with a
+ * max-width style holding the diagram's natural width, so that
+ * stylesheet rules like `width: 100%; height: auto` constrain the
+ * diagram to its container without upscaling small diagrams.
+ *
+ * When an explicit width is given, it becomes a width style
+ * instead, overriding any stylesheet sizing.
+ *
+ * The alt text, when given, becomes an aria-label; the SVG is
+ * marked role="img" for accessibility either way.
+ */
+export function adaptInlineSvg(
+    svg: string, width?: number, alt?: string
+): string {
+    return svg.replace(/^<svg([^>]*)>/, (_m, attrs) => {
+        const naturalWidth = attrs.match(/\swidth="([^"]*)"/)?.[1];
+        let adjusted = attrs
+            .replace(/\swidth="[^"]*"/, '')
+            .replace(/\sheight="[^"]*"/, '');
+        let extra = '';
+        if (typeof width === 'number') {
+            extra += ` style="width: ${width}px"`;
+        } else if (naturalWidth) {
+            extra += ` style="max-width: ${naturalWidth}px"`;
+        }
+        extra += ' role="img"';
+        if (typeof alt === 'string') {
+            extra += ` aria-label="${encode(alt)}"`;
+        }
+        return `<svg${adjusted}${extra}>`;
+    });
 }
 
 export type MermaidRenderOptions = {
