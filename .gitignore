@@ -131,3 +131,6 @@ out
 
 package-lock.json
 # dist
+
+# Locally downloaded mmdr binary
+mmdr

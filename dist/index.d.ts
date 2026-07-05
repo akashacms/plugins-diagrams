@@ -161,7 +161,51 @@ export type doPlantUMLOptions = {
      * To have log information
      */
     verbose?: boolean;
+    /**
+     * URL for a PlantUML server, such as
+     * http://localhost:8080.  Overrides the
+     * PLANTUML_SERVER_URL environment variable.
+     */
+    serverURL?: string;
+    /**
+     * Filesystem path for a plantuml.jar file.
+     * Overrides the PLANTUML_JAR environment variable.
+     */
+    jarPath?: string;
 };
+/**
+ * Render a PlantUML diagram using whichever rendering
+ * backend is configured.  If a server URL is available
+ * (the serverURL option or the PLANTUML_SERVER_URL
+ * environment variable), the diagram is sent to that
+ * PlantUML server.  Otherwise, if a JAR path is available
+ * (the jarPath option or the PLANTUML_JAR environment
+ * variable), the diagram is rendered locally by running
+ * the JAR with Java.  If neither is available, an error
+ * is thrown directing the user to the README.
+ */
+export declare function doPlantUML(options: doPlantUMLOptions): Promise<void>;
+/**
+ * Encode PlantUML diagram text for use in a PlantUML
+ * server URL, as documented at
+ * https://plantuml.com/text-encoding -- the text is
+ * deflated, then encoded with a base64-like alphabet.
+ */
+export declare function plantumlEncode(diagram: string): string;
+/**
+ * Render a PlantUML diagram by sending it to a PlantUML
+ * server.  The server URL comes from the serverURL option
+ * or the PLANTUML_SERVER_URL environment variable.
+ *
+ * The server supports a subset of the JAR's features:
+ * PNG (tpng, the default), SVG (tsvg), and ASCII art
+ * (ttxt) output formats.  The input is either inputBody
+ * or a single entry in inputFNs, and outputFN is
+ * required.  Options that only make sense for the JAR
+ * (darkmode, charset, nbthread, outputDir, and the other
+ * output formats) are not supported.
+ */
+export declare function doPlantUMLServer(options: doPlantUMLOptions): Promise<void>;
 export declare function doPlantUMLLocal(options: any): Promise<void>;
 export declare function isValidCharset(charset: any): boolean;
 //# sourceMappingURL=index.d.ts.map

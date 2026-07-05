@@ -8,7 +8,7 @@ import util from 'node:util';
 
 // import packageConfig from '../package.json' with { type: 'json' }; 
 
-import { doPlantUMLOptions, doPlantUMLLocal, isValidCharset, PintoraRenderOptions, doPintora, MermaidRenderOptions, doMermaid } from './index.js';
+import { doPlantUMLOptions, doPlantUML, isValidCharset, PintoraRenderOptions, doPintora, MermaidRenderOptions, doMermaid } from './index.js';
 
 import { Command } from 'commander';
 const program = new Command();
@@ -27,6 +27,8 @@ program
     .description('Render PlantUML files')
     .option('--input-file <inputFN...>', 'Path for document to render')
     .option('--output-file <outputFN>', 'Path for rendered document')
+    .option('--server <serverURL>', 'URL for a PlantUML server. Overrides PLANTUML_SERVER_URL.')
+    .option('--jar <jarPath>', 'Path for a plantuml.jar file. Overrides PLANTUML_JAR.')
     .option('--charset <charset>', 'To use a specific character set. Default: UTF-8')
     // TODO --checkmetadata Skip PNG files that don't need to be regenerated
     // TODO -Dvar=value should be --define <defVarValue...>
@@ -93,6 +95,13 @@ program
             inputFNs: cmdObj.inputFile,
             outputFN: cmdObj.outputFile
         };
+
+        if (typeof cmdObj.server === 'string') {
+            options.serverURL = cmdObj.server;
+        }
+        if (typeof cmdObj.jar === 'string') {
+            options.jarPath = cmdObj.jar;
+        }
 
         if (cmdObj.charset) {
             if (!isValidCharset(cmdObj.charset)) {
@@ -225,11 +234,66 @@ program
             options.verbose = cmdObj.verbose;
         }
 
-        console.log({
-            cmdObj, options
-        })
+        await doPlantUML(options);
+    });
 
-        await doPlantUMLLocal(options);
+// The editions of the PlantUML JAR published on the
+// PlantUML release page, and the file name pattern
+// used for each edition.
+const plantumlEditions = [
+    'gpl', 'mit', 'lgpl', 'asl', 'epl', 'bsd'
+];
+
+function plantumlJarName(edition: string, version: string) {
+    return edition === 'gpl'
+        ? `plantuml-${version}.jar`
+        : `plantuml-${edition}-${version}.jar`;
+}
+
+program
+    .command('plantuml-download')
+    .description('Download the PlantUML JAR file for use with the PLANTUML_JAR environment variable')
+    .option('--plantuml-version <version>', 'PlantUML version, such as 1.2025.0.  Default: the latest release.')
+    .option('--edition <edition>', `JAR edition: ${plantumlEditions.join(', ')}`, 'mit')
+    .option('--output-dir <outDir>', 'Directory into which the JAR is downloaded', '.')
+    .action(async (cmdObj) => {
+
+        const edition = cmdObj.edition;
+        if (!plantumlEditions.includes(edition)) {
+            throw new Error(`plantuml-download: unknown edition ${util.inspect(edition)} - use one of ${plantumlEditions.join(', ')}`);
+        }
+
+        let version = cmdObj.plantumlVersion;
+        if (typeof version !== 'string') {
+            const res = await fetch(
+                'https://api.github.com/repos/plantuml/plantuml/releases/latest');
+            if (!res.ok) {
+                throw new Error(`plantuml-download: could not determine the latest PlantUML release (${res.status} ${res.statusText}) - specify one with --plantuml-version`);
+            }
+            const release = await res.json() as { tag_name: string };
+            version = release.tag_name.replace(/^v/, '');
+        }
+
+        const jarName = plantumlJarName(edition, version);
+        const url = `https://github.com/plantuml/plantuml/releases/download/v${version}/${jarName}`;
+
+        console.log(`Downloading ${url}`);
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(`plantuml-download: download of ${url} failed (${res.status} ${res.statusText})`);
+        }
+        const jarPath = path.join(cmdObj.outputDir, jarName);
+        await fsp.mkdir(cmdObj.outputDir, { recursive: true });
+        await fsp.writeFile(jarPath,
+            Buffer.from(await res.arrayBuffer()));
+
+        console.log(`Downloaded ${jarPath}
+
+To use this JAR for PlantUML rendering, set the environment variable:
+
+    export PLANTUML_JAR=${path.resolve(jarPath)}
+
+Rendering with the JAR requires Java to be installed and in your PATH.`);
     });
 
 program

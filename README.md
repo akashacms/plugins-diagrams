@@ -6,9 +6,7 @@ Process PlantUML, Mermaid, or Pintora, diagrams and either convert into an outpu
 
 **PlantUML** https://plantuml.com/
 
-These diagrams are rendered locally using a copy of `plantuml.jar`, specifically the version released under the MIT license.  By using the JAR file, you are not reliant on an external server.
-
-**NOTE**: Rendering PlantUML diagrams requires the Java runtime to be installed on your machine and in your path.  You can test this by running `java --help` at the command line.
+These diagrams are rendered either by sending them to a PlantUML server (which is easy to self-host with Docker), or locally by running a copy of `plantuml.jar` with Java.  The JAR file is _not_ distributed with this package - a one-time setup step is required, described in the section _Setting up PlantUML rendering_ below.
 
 **Mermaid** -- https://mermaid.ai/open-source/
 
@@ -34,6 +32,85 @@ In an AkashaCMS project directory:
 $ npm install @akashacms/diagram-makers --save
 ```
 
+## Setting up PlantUML rendering
+
+Earlier releases of this package distributed a copy of `plantuml.jar`.  That file is large (over 1 MB), and not every user of this package renders PlantUML diagrams, so it is no longer included.  Instead, choose one of two setup paths:
+
+1. Run a **PlantUML server**, most easily self-hosted with Docker, and set the `PLANTUML_SERVER_URL` environment variable.
+2. Download **`plantuml.jar`**, using the included `plantuml-download` command, and set the `PLANTUML_JAR` environment variable.
+
+If neither environment variable is set when a PlantUML diagram is rendered, rendering fails with an error message directing you to this section.
+
+If both environment variables are set, the server is used.  The CLI options `--server` and `--jar` (described below) override the environment variables and select a specific backend.
+
+### Option 1: PlantUML server
+
+The PlantUML project publishes an official server image on Docker Hub.  Start it with:
+
+```shell
+$ docker run -d --name plantuml -p 8080:8080 plantuml/plantuml-server:jetty
+```
+
+Or with a Docker Compose file:
+
+```yaml
+services:
+  plantuml:
+    image: plantuml/plantuml-server:jetty
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+```
+
+Then set the environment variable:
+
+```shell
+$ export PLANTUML_SERVER_URL=http://localhost:8080
+```
+
+Diagram text is deflate-compressed and encoded into the request URL using the [PlantUML text encoding](https://plantuml.com/text-encoding), then the rendered image is retrieved from the server.  Any server implementing the standard PlantUML server API can be used, including a server hosted elsewhere on your network.
+
+The advantages of the server are: a) faster rendering, since the JVM is already running; b) no local Java requirement; c) the same server can back a local PlantUML editor.
+
+Server rendering supports PNG (`tpng`), SVG (`tsvg`), and ASCII art (`ttxt`) output, with a single input file (or inline diagram) and a single output file per invocation.  The JAR-only features - other output formats, `darkmode`, multiple input files with `--output-dir` - report an error directing you to use the JAR.
+
+### Option 2: Download plantuml.jar
+
+The package includes a command that downloads the JAR from the [PlantUML releases page](https://github.com/plantuml/plantuml/releases):
+
+```shell
+$ npx diagram-makers plantuml-download --output-dir ~/plantuml
+Downloading https://github.com/plantuml/plantuml/releases/download/v1.2026.6/plantuml-mit-1.2026.6.jar
+Downloaded /home/me/plantuml/plantuml-mit-1.2026.6.jar
+...
+```
+
+Then set the environment variable, as instructed by the command output:
+
+```shell
+$ export PLANTUML_JAR=/home/me/plantuml/plantuml-mit-1.2026.6.jar
+```
+
+By default the latest release of the MIT-licensed edition is downloaded.  The options:
+
+```shell
+Usage: diagram-makers plantuml-download [options]
+
+Download the PlantUML JAR file for use with the PLANTUML_JAR environment variable
+
+Options:
+  --plantuml-version <version>  PlantUML version, such as 1.2025.0.  Default:
+                                the latest release.
+  --edition <edition>           JAR edition: gpl, mit, lgpl, asl, epl, bsd
+                                (default: "mit")
+  --output-dir <outDir>         Directory into which the JAR is downloaded
+                                (default: ".")
+```
+
+The editions correspond to the license variants published by the PlantUML project.  Review the [PlantUML license page](https://plantuml.com/license) to choose the edition appropriate for your use.
+
+**NOTE**: Rendering with the JAR requires the Java runtime to be installed on your machine and in your path.  You can test this by running `java --help` at the command line.  All `plantuml.jar` features are available in this mode, including all output formats, `darkmode`, and multiple input files.
+
 ## Usage - CLI -- PlantUML
 
 The package includes a CLI tool with the following synopsis:
@@ -46,6 +123,10 @@ Render PlantUML files
 Options:
   --input-file <inputFN...>  Path for document to render
   --output-file <outputFN>   Path for rendered document
+  --server <serverURL>       URL for a PlantUML server.
+                             Overrides PLANTUML_SERVER_URL.
+  --jar <jarPath>            Path for a plantuml.jar file.
+                             Overrides PLANTUML_JAR.
   --charset <charset>        To use a specific character set. Default: UTF-8
   --darkmode                 To use dark mode for diagrams
   --debugsvek                To generate intermediate svek files
@@ -72,6 +153,8 @@ Options:
 
 Most of these options correspond directly to the CLI arguments for `plantuml.jar` as listed on the PlantUML website.
 
+Rendering requires either a PlantUML server or a downloaded JAR, as described in the section _Setting up PlantUML rendering_.  The backend is selected by the `PLANTUML_SERVER_URL` or `PLANTUML_JAR` environment variables, or overridden by the `--server` or `--jar` options.
+
 One mode is a single input file, and a single output file:
 
 ```shell
@@ -92,7 +175,7 @@ $ npx diagram-makers plantuml \
     --tpng
 ```
 
-This will search for PlantUML documents in the named files or directories, generating PNG files, with the files landing in a directory hierarchy under the `out` directory.
+This will search for PlantUML documents in the named files or directories, generating PNG files, with the files landing in a directory hierarchy under the `out` directory.  The multiple input file mode requires the JAR - it is not supported by server rendering.
 
 ## USAGE - CLI - Pintora
 
@@ -215,9 +298,9 @@ For the font to take effect, the `fontFamily` in the config file (or the theme d
 The `diagram-makers` package exports an API providing similar functionality.
 
 ```js
-import { doPlantUMLOptions, doPlantUMLLocal } from '@akashacms/diagram-makers';
+import { doPlantUMLOptions, doPlantUML } from '@akashacms/diagram-makers';
 
-await doPlantUMLLocal({
+await doPlantUML({
   inputBody: `
     @startuml
     ... diagram
@@ -230,13 +313,21 @@ await doPlantUMLLocal({
 
 This converts an inline diagram into a PNG file at the named filesystem location.  The structure of the _options_ parameter is described by `doPlantUMLOptions`.
 
+The `doPlantUML` function selects the rendering backend as described in _Setting up PlantUML rendering_: a PlantUML server when `PLANTUML_SERVER_URL` is set, a local JAR when `PLANTUML_JAR` is set, otherwise it throws an error.  The `serverURL` and `jarPath` options override the corresponding environment variables.
+
+The backends are also exported directly:
+
+* `doPlantUMLServer(options)` - renders through a PlantUML server.  The server URL comes from the `serverURL` option or `PLANTUML_SERVER_URL`.
+* `doPlantUMLLocal(options)` - renders by running `plantuml.jar` with Java.  The JAR path comes from the `jarPath` option or `PLANTUML_JAR`.
+* `plantumlEncode(diagram)` - returns the [PlantUML text encoding](https://plantuml.com/text-encoding) of the diagram text, for constructing PlantUML server URLs yourself.
+
 The `inputFNs` is an array treated similarly to the `--input-file` parameter for the CLI.
 
 There are three modes for treating inputs and outputs:
 
 * No `inputFNs`, in which case `inputBody` is output to the `outputFN` which is required.
 * One entry in the `inputFNs` which is output to the `outputFN` which is required.
-* Multiple entries in the `inputFNs`, and the output location is influenced by `outputDir`.
+* Multiple entries in the `inputFNs`, and the output location is influenced by `outputDir`.  This mode requires the JAR backend.
 
 ## API - Mermaid
 
@@ -313,6 +404,8 @@ In previous releases this plugin required `fspath` and `prefix` options naming a
 ### PlantUML diagrams in AkashaCMS projects
 
 In a document the `<diagrams-plantuml>` tag is used for rendering a single PlantUML diagram into either PNG or SVG.
+
+Rendering requires either the `PLANTUML_SERVER_URL` or `PLANTUML_JAR` environment variable to be set when running the AkashaCMS build, as described in the section _Setting up PlantUML rendering_.
 
 The PlantUML document can be used inline
 

@@ -3,6 +3,7 @@
 import path from 'node:path';
 import fs, { promises as fsp } from 'node:fs';
 import util from 'node:util';
+import { deflateRawSync } from 'node:zlib';
 import { execSync, spawnSync, spawn } from 'node:child_process';
 import {encode} from 'html-entities';
 import { render, PintoraConfig } from '@pintora/cli'
@@ -14,13 +15,13 @@ export {
 
 const __dirname = import.meta.dirname;
 
-// Path name for the local copy of plantuml.jar
-const plantumlJar = path.join(
-                __dirname,
-                '..',
-                'vendor',
-                'plantuml',
-                'plantuml-mit-1.2025.0.jar');
+// The PlantUML JAR is no longer distributed with this package.
+// Rendering PlantUML requires the user to either run a PlantUML
+// server (PLANTUML_SERVER_URL) or download the JAR (PLANTUML_JAR).
+// See the README section "Setting up PlantUML rendering".
+
+const plantumlSetupHelp =
+    `See the "Setting up PlantUML rendering" section of the @akashacms/diagram-makers README: https://github.com/akashacms/plugins-diagrams#setting-up-plantuml-rendering`;
 
 const pluginName = '@akashacms/diagram-makers';
 
@@ -618,9 +619,168 @@ export type doPlantUMLOptions = {
      * To have log information
      */
     verbose?: boolean;
+
+    /**
+     * URL for a PlantUML server, such as
+     * http://localhost:8080.  Overrides the
+     * PLANTUML_SERVER_URL environment variable.
+     */
+    serverURL?: string;
+
+    /**
+     * Filesystem path for a plantuml.jar file.
+     * Overrides the PLANTUML_JAR environment variable.
+     */
+    jarPath?: string;
+}
+
+/**
+ * Render a PlantUML diagram using whichever rendering
+ * backend is configured.  If a server URL is available
+ * (the serverURL option or the PLANTUML_SERVER_URL
+ * environment variable), the diagram is sent to that
+ * PlantUML server.  Otherwise, if a JAR path is available
+ * (the jarPath option or the PLANTUML_JAR environment
+ * variable), the diagram is rendered locally by running
+ * the JAR with Java.  If neither is available, an error
+ * is thrown directing the user to the README.
+ */
+export async function doPlantUML(options: doPlantUMLOptions) {
+    const serverURL = options.serverURL
+            ?? process.env.PLANTUML_SERVER_URL;
+    const jarPath = options.jarPath
+            ?? process.env.PLANTUML_JAR;
+    if (typeof serverURL === 'string' && serverURL.length >= 1) {
+        return doPlantUMLServer(options);
+    }
+    if (typeof jarPath === 'string' && jarPath.length >= 1) {
+        return doPlantUMLLocal(options);
+    }
+    throw new Error(`PlantUML rendering is not configured.  Either run a PlantUML server and set the PLANTUML_SERVER_URL environment variable, or download plantuml.jar (npx diagram-makers plantuml-download) and set the PLANTUML_JAR environment variable.  ${plantumlSetupHelp}`);
+}
+
+// The alphabet used by PlantUML servers for encoded
+// diagram text.  It resembles base64, but with a
+// different character set and ordering.
+const plantumlAlphabet =
+    '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_';
+
+/**
+ * Encode PlantUML diagram text for use in a PlantUML
+ * server URL, as documented at
+ * https://plantuml.com/text-encoding -- the text is
+ * deflated, then encoded with a base64-like alphabet.
+ */
+export function plantumlEncode(diagram: string): string {
+    const deflated = deflateRawSync(
+        Buffer.from(diagram, 'utf-8'), { level: 9 });
+    let ret = '';
+    for (let i = 0; i < deflated.length; i += 3) {
+        const b1 = deflated[i];
+        const b2 = i + 1 < deflated.length ? deflated[i + 1] : 0;
+        const b3 = i + 2 < deflated.length ? deflated[i + 2] : 0;
+        ret += plantumlAlphabet[b1 >> 2]
+             + plantumlAlphabet[((b1 & 0x03) << 4) | (b2 >> 4)]
+             + plantumlAlphabet[((b2 & 0x0F) << 2) | (b3 >> 6)]
+             + plantumlAlphabet[b3 & 0x3F];
+    }
+    return ret;
+}
+
+/**
+ * Render a PlantUML diagram by sending it to a PlantUML
+ * server.  The server URL comes from the serverURL option
+ * or the PLANTUML_SERVER_URL environment variable.
+ *
+ * The server supports a subset of the JAR's features:
+ * PNG (tpng, the default), SVG (tsvg), and ASCII art
+ * (ttxt) output formats.  The input is either inputBody
+ * or a single entry in inputFNs, and outputFN is
+ * required.  Options that only make sense for the JAR
+ * (darkmode, charset, nbthread, outputDir, and the other
+ * output formats) are not supported.
+ */
+export async function doPlantUMLServer(options: doPlantUMLOptions) {
+    const serverURL = options.serverURL
+            ?? process.env.PLANTUML_SERVER_URL;
+    if (typeof serverURL !== 'string' || serverURL.length < 1) {
+        throw new Error(`plantuml server - no server URL.  Set the PLANTUML_SERVER_URL environment variable.  ${plantumlSetupHelp}`);
+    }
+
+    for (const unsupported of [
+        'teps', 'thtml', 'tlatex', 'tpdf', 'tscxml',
+        'tvdx', 'txmi', 'tutxt'
+    ]) {
+        if (options[unsupported]) {
+            throw new Error(`plantuml server - the ${unsupported} output format is not supported by PlantUML server rendering - use the JAR instead (PLANTUML_JAR)`);
+        }
+    }
+    if (options.darkmode) {
+        throw new Error(`plantuml server - darkmode is not supported by PlantUML server rendering - use the JAR instead (PLANTUML_JAR)`);
+    }
+
+    let format;
+    if (options.tsvg) format = 'svg';
+    else if (options.ttxt) format = 'txt';
+    else format = 'png';
+
+    let diagram;
+    if (Array.isArray(options.inputFNs)
+     && options.inputFNs.length > 1
+    ) {
+        throw new Error(`plantuml server - only one input file is supported by PlantUML server rendering - use the JAR instead (PLANTUML_JAR)`);
+    } else if (Array.isArray(options.inputFNs)
+     && options.inputFNs.length === 1
+    ) {
+        diagram = await fsp.readFile(options.inputFNs[0], 'utf-8');
+    } else if (typeof options.inputBody === 'string'
+     && options.inputBody.length >= 1
+    ) {
+        diagram = options.inputBody;
+    } else {
+        throw new Error(`plantuml server - no input sources`);
+    }
+
+    if (typeof options.outputFN !== 'string'
+     || options.outputFN.length < 1
+    ) {
+        throw new Error(`plantuml server - no output file`);
+    }
+
+    const url = `${serverURL.replace(/\/+$/, '')}/${format}/${plantumlEncode(diagram)}`;
+
+    let res;
+    try {
+        res = await fetch(url);
+    } catch (err) {
+        throw new Error(`plantuml server - could not reach PlantUML server at ${serverURL} - ${err.message}.  ${plantumlSetupHelp}`);
+    }
+    if (!res.ok) {
+        // For diagram errors the server responds with a
+        // 4xx status, but the body is still a rendered
+        // image describing the error.  Report the status
+        // and let the user inspect the diagram.
+        throw new Error(`plantuml server - ${serverURL} responded with ${res.status} ${res.statusText} for the diagram`);
+    }
+
+    const buf = Buffer.from(await res.arrayBuffer());
+    await fsp.writeFile(options.outputFN, buf);
 }
 
 export async function doPlantUMLLocal(options) {
+
+    const plantumlJar = options.jarPath
+            ?? process.env.PLANTUML_JAR;
+    if (typeof plantumlJar !== 'string'
+     || plantumlJar.length < 1
+    ) {
+        throw new Error(`plantuml - no JAR file configured.  Download plantuml.jar (npx diagram-makers plantuml-download) and set the PLANTUML_JAR environment variable.  ${plantumlSetupHelp}`);
+    }
+    try {
+        await fsp.access(plantumlJar, fs.constants.R_OK);
+    } catch (err) {
+        throw new Error(`plantuml - the JAR file ${plantumlJar} does not exist or is not readable.  ${plantumlSetupHelp}`);
+    }
 
     const args = [
         // 'java',
@@ -974,7 +1134,7 @@ class PlantUMLLocal extends akasha.CustomElement {
         if (!options.tpng && !options.tsvg) {
             throw new Error(`PlantUMLLocal must use one of tpng or tsvg`);
         }
-        await doPlantUMLLocal(options);
+        await doPlantUML(options);
 
         const cap = typeof caption === 'string'
             ? `<figcaption>${encode(caption)}</figcaption>`
