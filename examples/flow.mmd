@@ -1,0 +1,9 @@
+flowchart LR
+    A[Markdown document] --> B{Contains diagram?}
+    B -->|mermaid| C[mermaid-wasm-renderer]
+    B -->|plantuml| D[plantuml.jar]
+    B -->|pintora| E[pintora-cli]
+    C --> F[SVG file]
+    D --> F
+    E --> F
+    F --> G[Rendered page]

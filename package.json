@@ -1,9 +1,9 @@
 {
-  "name": "@akashacms/diagrams-maker",
-  "version": "0.9.6",
+  "name": "@akashacms/diagram-makers",
+  "version": "0.10.0",
   "description": "Process PlantUML diagrams into SVG, PNG, as well as AkashaCMS integration",
   "bin": {
-    "diagrams-maker": "dist/cli.js"
+    "diagram-makers": "dist/cli.js"
   },
   "main": "dist/index.js",
   "types": "dist/index.js",
@@ -30,16 +30,16 @@
   },
   "homepage": "https://github.com/akashacms/plugins-diagrams#readme",
   "dependencies": {
-    "@mermaid-js/mermaid-cli": "^11.6.0",
     "@pintora/cli": "^0.8.x",
     "commander": "^14.0.0",
-    "html-entities": "^2.5.2"
+    "html-entities": "^2.5.2",
+    "mermaid-wasm-renderer": "github:akashacms/mermaid-wasm-renderer"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
     "typescript": "^5.7.3"
   },
   "peerDependencies": {
-    "akasharender": "^0.9.x"
+    "akasharender": "akashacms/akasharender#0.10"
   }
 }

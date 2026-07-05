@@ -28,7 +28,51 @@ import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
 const mahabhuta = akasha.mahabhuta;
 
-import { run as runMermaid } from "@mermaid-js/mermaid-cli";
+import {
+    adaptInlineSvg,
+    doMermaid,
+    registerMermaidFonts,
+    renderMermaidSvg
+} from './render-mermaid.js';
+
+export {
+    MermaidRenderOptions,
+    doMermaid,
+    renderMermaidSvg,
+    registerMermaidFonts
+} from './render-mermaid.js';
+
+export type DiagramsPluginOptions = {
+    /**
+     * Options for rendering <diagrams-mermaid> elements
+     */
+    mermaid?: {
+        /**
+         * File name of a JSON configuration file using the same
+         * schema as the mmdr --config file (theme, themeVariables,
+         * flowchart, ...).  Read once at configuration time.
+         */
+        configFN?: string;
+
+        /**
+         * JSON configuration string with the same schema.  Takes
+         * precedence over configFN.
+         */
+        configJSON?: string;
+
+        /**
+         * Theme preset name: default, dark, forest, neutral, modern.
+         * Takes precedence over the config's theme name.
+         */
+        themePreset?: string;
+
+        /**
+         * TTF/OTF font files to register for text measurement.
+         * When omitted, a common system font is used if found.
+         */
+        fontFNs?: string[];
+    };
+};
 
 export class DiagramsPlugin extends Plugin {
 
@@ -38,13 +82,19 @@ export class DiagramsPlugin extends Plugin {
         super(pluginName);
     }
 
-    configure(config, options) {
+    configure(config, options?: DiagramsPluginOptions) {
         this.#config = config;
         // this.config = config;
         this.akasha = config.akasha;
         this.options = options ? options : {};
         this.options.config = config;
-        config.addMahabhuta(mahabhutaArray(options, config, this.akasha, this));
+        if (this.options.mermaid?.configFN
+         && !this.options.mermaid.configJSON
+        ) {
+            this.options.mermaid.configJSON = fs.readFileSync(
+                this.options.mermaid.configFN, 'utf-8');
+        }
+        config.addMahabhuta(mahabhutaArray(this.options, config, this.akasha, this));
         let moduleDirname = import.meta.dirname;
         config.addAssetsDir(path.join(moduleDirname, '..', 'assets'));
         config.addStylesheet({
@@ -112,60 +162,71 @@ class MermaidLocal extends akasha.CustomElement {
 
         // console.log(`MermaidLocal ${inf} ${vpathIn} ${fspathIn}`);
 
-        // if (typeof fspathIn === 'string') {
-        //     if (typeof code === 'string'
-        //      && code.length >= 1
-        //     ) {
-        //         throw new Error(`diagrams-mermaid - either specify input-file OR a diagram body, not both`);
-        //     }
-        //     code = await fsp.readFile(fspathIn, 'utf-8');
-        // }
+        if (typeof fspathIn === 'string') {
+            code = await fsp.readFile(fspathIn, 'utf-8');
+        }
+
+        if (typeof code !== 'string' || code.length < 1) {
+            throw new Error(`diagrams-mermaid requires an input-file or an inline diagram body`);
+        }
 
         // console.log(`MermaidLocal ${inf} ${vpathIn} ${fspathIn} read code ${code}`);
 
-        if (typeof outputFN !== 'string'
-         || outputFN.length < 1
-        ) {
-            throw new Error(`diagrams-mermaid must have output-file`);
+        const mermaidOptions = this.array.options?.mermaid ?? {};
+
+        // With no output-file attribute, the rendered SVG is
+        // inserted inline in the generated HTML rather than
+        // written to a file and referenced with <img>.
+        const inlineMode = typeof outputFN !== 'string'
+                        || outputFN.length < 1;
+
+        let svg;
+        let fspathOut;
+        if (!inlineMode) {
+            if (!outputFN.endsWith('.svg')) {
+                throw new Error(`diagrams-mermaid must have output-file with .svg extension - mermaid-wasm-renderer does not support .png`);
+            }
+
+            fspathOut = path.join(
+                this.config.renderDestination, outputFN
+            );
+
+            await fsp.mkdir(path.dirname(fspathOut), {
+                recursive: true
+            });
         }
-
-        if (!outputFN.endsWith('.svg') && !outputFN.endsWith('.png')) {
-            throw new Error(`diagrams-mermaid must have output-file for .svg or .png extension`);
-        }
-
-        const fspathOut = path.join(
-            this.config.renderDestination, outputFN
-        );
-
-        // console.log(`MermaidLocal runMermaid ${this.config.configDir} ${this.config.renderDestination} ${fspathIn} ${outputFN} ${fspathOut}`);
-
-        await fsp.mkdir(path.dirname(fspathOut), {
-            recursive: true
-        });
 
         try {
-            await runMermaid(fspathIn,
-                fspathOut as `${string}.png` | `${string}.svg`,
-                {
-                    // Controls the debugging output from Mermaid CLI,
-                    // including:
-                    //      Generating single mermaid chart
-                    quiet: true
+            if (inlineMode) {
+                if (Array.isArray(mermaidOptions.fontFNs)
+                 && mermaidOptions.fontFNs.length >= 1
+                ) {
+                    registerMermaidFonts(mermaidOptions.fontFNs);
                 }
-            );
+                svg = renderMermaidSvg(code,
+                    mermaidOptions.configJSON,
+                    mermaidOptions.themePreset);
+            } else {
+                await doMermaid({
+                    code,
+                    outputFN: fspathOut,
+                    configJSON: mermaidOptions.configJSON,
+                    themePreset: mermaidOptions.themePreset,
+                    fontFNs: mermaidOptions.fontFNs
+                });
+            }
         } catch (err) {
-            const inputFile = await fsp.readFile(fspathIn, 'utf8');
             console.error(`Mermaid threw error ${err.message}
 Input: ${inf} ${fspathIn} Output: ${outputFN} ${fspathOut}
-${inputFile}
+${code}
 `);
             return `
 <div class="diagrams-render-error">
-<span class="diagrams-title">Mermaid threw error ${err.message}</span>
+<span class="diagrams-title">Mermaid threw error ${encode(err.message)}</span>
 <span class="diagrams-error-files">
 <b>Input:</b> ${inf} ${fspathIn}<br/>
 <b>Output:</b> ${outputFN} ${fspathOut}</span>
-<code class="diagrams-error-input"><pre>${inputFile}</pre></code>
+<code class="diagrams-error-input"><pre>${encode(code)}</pre></code>
 </div>
 `;
             // throw new Error(`Mermaid threw error ${err.message}`);
@@ -196,25 +257,49 @@ ${inputFile}
             ? `title="${encode(title)}"`
             : '';
         const Tid = typeof id === 'string'
-            ? `id="${encode(id)}`
+            ? `id="${encode(id)}"`
             : '';
+        // The diagrams-mermaid class carries the stylesheet rules
+        // constraining the diagram to its container (issue #19).
         const Tclazz = typeof clazz === 'string'
-            ? `class="${encode(clazz)}`
-            : '';
+            ? `class="diagrams-mermaid ${encode(clazz)}"`
+            : `class="diagrams-mermaid"`;
         const Twidth = typeof width === 'number'
             ? `width="${width.toString()}"`
             : '';
 
-        const ret = `
+        // In inline mode there is no <img> to carry the alt, title,
+        // and width attributes.  The alt text becomes an aria-label
+        // on the SVG root, the width becomes a width style on the
+        // SVG root, and the title lands on the <figure>.
+        const ret = inlineMode
+            ? `
+        <figure ${Tid} ${Tclazz} ${Ttitle}>
+        ${adaptInlineSvg(svg,
+            typeof width === 'number' ? width : undefined,
+            typeof alt === 'string' ? alt : undefined)}
+        ${cap}
+        </figure>
+        `
+            : `
         <figure ${Tid} ${Tclazz}>
         <img src="${encode(outputFN)}" ${Talt} ${Ttitle} ${Twidth}/>
         ${cap}
         </figure>
         `;
+        // console.log(`MermaidLocal returning `, {
+        //     id: id,
+        //     Tid: Tid,
+        //     inputFile: inf,
+        //     outputFN: outputFN,
+        //     ret: ret
+        // });
         // console.log(`MermaidLocal returning ${ret}`);
         return ret;
     }
 }
+
+
 
 export type PintoraRenderOptions = {
     /**
@@ -901,10 +986,10 @@ class PlantUMLLocal extends akasha.CustomElement {
             ? `title="${encode(title)}"`
             : '';
         const Tid = typeof id === 'string'
-            ? `id="${encode(id)}`
+            ? `id="${encode(id)}"`
             : '';
         const Tclazz = typeof clazz === 'string'
-            ? `class="${encode(clazz)}`
+            ? `class="${encode(clazz)}"`
             : '';
         const Twidth = typeof width === 'number'
             ? `width="${width.toString()}"`
