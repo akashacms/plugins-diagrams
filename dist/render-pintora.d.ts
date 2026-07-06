@@ -36,10 +36,17 @@ export declare function doPintora(options: PintoraRenderOptions): Promise<void>;
  * in a document, from the <diagrams-pintora> element.
  *
  * The diagram is either inline in the element body or in
- * the file named by the input-file attribute.  The
- * rendered image is written to the file named by the
- * required output-file attribute, and referenced with
- * <img> in the generated HTML.
+ * the file named by the input-file attribute.  With an
+ * output-file attribute the rendered image is written to
+ * that file in the format named by the mime-type
+ * attribute (PNG by default), and referenced with <img>
+ * in the generated HTML.
+ *
+ * When there is no output-file attribute, the diagram is
+ * rendered as inline SVG embedded in the generated HTML.
+ * This mode supports only SVG - a mime-type of image/png
+ * or image/jpeg is an error, since binary images cannot
+ * be embedded inline.
  */
 export declare class PintoraLocal extends akasha.CustomElement {
     get elementName(): string;

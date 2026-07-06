@@ -28,6 +28,25 @@ export type MermaidPluginOptions = {
  */
 export declare function MarkdownITMermaidPlugin(md: any, opts?: MermaidPluginOptions): void;
 /**
+ * Add Pintora support to Markdown-IT such that ```pintora .. ```
+ * is rendered to inline SVG.
+ *
+ * Pintora rendering is asynchronous, while Markdown-IT renderer
+ * rules are synchronous.  Therefore the fence is not rendered
+ * here.  Instead it is converted into a <diagrams-pintora>
+ * element with no output-file, which the DiagramsPlugin Mahafunc
+ * renders to inline SVG during Mahabhuta processing.
+ * Consequently this plugin requires the AkashaCMS rendering
+ * pipeline with DiagramsPlugin configured - it does not work
+ * with standalone Markdown-IT.
+ *
+ * As with the Mermaid plugin, text following the language name
+ * (```pintora A title) becomes the figure caption.
+ *
+ * @param md
+ */
+export declare function MarkdownITPintoraPlugin(md: any): void;
+/**
  * Add PlantUML support to Markdown-IT such that ```plantuml .. ```
  * is rendered to inline SVG.
  *

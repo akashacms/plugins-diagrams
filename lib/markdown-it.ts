@@ -97,6 +97,55 @@ ${code}
 }
 
 /**
+ * Add Pintora support to Markdown-IT such that ```pintora .. ```
+ * is rendered to inline SVG.
+ *
+ * Pintora rendering is asynchronous, while Markdown-IT renderer
+ * rules are synchronous.  Therefore the fence is not rendered
+ * here.  Instead it is converted into a <diagrams-pintora>
+ * element with no output-file, which the DiagramsPlugin Mahafunc
+ * renders to inline SVG during Mahabhuta processing.
+ * Consequently this plugin requires the AkashaCMS rendering
+ * pipeline with DiagramsPlugin configured - it does not work
+ * with standalone Markdown-IT.
+ *
+ * As with the Mermaid plugin, text following the language name
+ * (```pintora A title) becomes the figure caption.
+ *
+ * @param md
+ */
+export function MarkdownITPintoraPlugin(md) {
+
+    const defaultRenderer = md.renderer.rules.fence.bind(md.renderer.rules);
+
+    md.renderer.rules.fence = (tokens, idx, mdOptions, env, self) => {
+        const token = tokens[idx];
+        if (token.info.startsWith('pintora')) {
+            const code = token.content.replace(/^\n|\n$/g, '');
+
+            let title = '';
+            const spc = token.info.indexOf(' ', 7);
+            if (spc > 0) {
+                title = token.info.slice(spc + 1);
+            }
+            const Tcaption = title !== ''
+                ? ` caption="${encode(title)}"`
+                : '';
+
+            // The diagram text is entity-encoded so that
+            // characters like < and > survive the trip
+            // through the HTML parser - $element.text()
+            // decodes them.
+            return `<diagrams-pintora${Tcaption}>
+${encode(code)}
+</diagrams-pintora>
+`;
+        }
+        return defaultRenderer(tokens, idx, mdOptions, env, self);
+    }
+}
+
+/**
  * Add PlantUML support to Markdown-IT such that ```plantuml .. ```
  * is rendered to inline SVG.
  *

@@ -388,7 +388,7 @@ Rendering happens in-process through [mermaid-wasm-renderer](https://github.com/
 
 ## Usage - AkashaCMS project
 
-The `@akashacms/diagram-makers` package includes an AkashaCMS plugin, as well as Markdown-IT plugins supporting Mermaid and PlantUML code fences.
+The `@akashacms/diagram-makers` package includes an AkashaCMS plugin, as well as Markdown-IT plugins supporting Mermaid, PlantUML, and Pintora code fences.
 
 Setup, configuration:
 
@@ -396,7 +396,8 @@ Setup, configuration:
 import {
     DiagramsPlugin,
     MarkdownITMermaidPlugin,
-    MarkdownITPlantUMLPlugin
+    MarkdownITPlantUMLPlugin,
+    MarkdownITPintoraPlugin
 } from '@akashacms/diagram-makers';
 
 config.use(DiagramsPlugin);
@@ -408,7 +409,8 @@ config.findRendererName('.html.md')
     configJSON: await fsp.readFile('mermaid-config.json', 'utf-8'),
     fontFNs: [ '/path/to/Roboto.ttf' ]
 })
-.use(MarkdownITPlantUMLPlugin);
+.use(MarkdownITPlantUMLPlugin)
+.use(MarkdownITPintoraPlugin);
 ```
 
 The options for `MarkdownITMermaidPlugin` are:
@@ -531,6 +533,35 @@ Or, the Pintora document can be in an external file:
 ```
 
 Sometimes a Pintora document will not parse correctly when used in-line.  The solution for such a case is to place the diagram description in a file.
+
+As with the other diagram types, the `input-file` path must be a virtual path within either an `assets` or `documents` directory.  An absolute pathname is relative to the root of the virtual filespace, while a relative pathname is relative to the file being rendered.  The rendered image is written into the `renderDestination` directory hierarchy at the location named by `output-file`, resolved the same way, and referenced with `<img>`.  The `mime-type` attribute selects the output format: `image/png` (the default), `image/jpeg`, or `image/svg+xml`.
+
+The `output-file` attribute is optional.  When omitted, the rendered SVG is inserted inline in the generated HTML instead of being written to a file:
+
+```html
+<diagrams-pintora input-file="./flight.pint"/>
+```
+
+Inline mode supports only SVG - specifying `mime-type="image/png"` or `mime-type="image/jpeg"` without an `output-file` is an error, because a binary image cannot be embedded as inline markup.  When `mime-type` is omitted in inline mode, SVG is used automatically.
+
+In inline mode there is no `<img>` element to carry the `alt`, `title`, and `width` attributes, so they are placed differently: `alt` becomes an `aria-label` on the SVG root (which is marked `role="img"` for accessibility), `width` becomes a `width` style on the SVG root, and `title` is placed on the `<figure>`.
+
+In both modes the generated `<figure>` carries the `diagrams-pintora` class, whose stylesheet rules constrain the diagram to its container, in the same manner as described for Mermaid in the section _Constraining diagram size on the web page_.
+
+### Pintora code fences in Markdown documents
+
+With `MarkdownITPintoraPlugin` added to Markdown-IT as shown above, a Pintora diagram can be written in a code fence, and is rendered as inline SVG:
+
+    ```pintora optional caption goes here
+    sequenceDiagram
+      Frida-->>Georgia: Flowers are beautiful
+    ```
+
+In other words, within a 3-backtick fence labeled with the language `pintora`, you place a Pintora document.  You may also use a three-tilde fence (`~~~pintora`) if you prefer.
+
+A figure caption can be included by adding a space after `pintora` then adding the caption text.
+
+Behind the scenes the fence is converted into a `<diagrams-pintora>` element with no `output-file`, which is then rendered to inline SVG as described in the previous section.  Because Pintora rendering is asynchronous while Markdown-IT rendering is synchronous, the actual rendering happens during Mahabhuta processing.  Consequently this plugin requires the AkashaCMS rendering pipeline with `DiagramsPlugin` configured - unlike `MarkdownITMermaidPlugin`, it does not work with standalone Markdown-IT.
 
 ### Inline Mermaid diagrams in an AkashaCMS project
 

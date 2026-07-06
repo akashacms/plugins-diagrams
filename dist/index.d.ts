@@ -1,6 +1,6 @@
 import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
-export { MarkdownITMermaidPlugin, MarkdownITPlantUMLPlugin, MermaidPluginOptions } from './markdown-it.js';
+export { MarkdownITMermaidPlugin, MarkdownITPlantUMLPlugin, MarkdownITPintoraPlugin, MermaidPluginOptions } from './markdown-it.js';
 export { MermaidRenderOptions, doMermaid, renderMermaidSvg, registerMermaidFonts, adaptInlineSvg, MermaidLocal } from './render-mermaid.js';
 export { doPlantUMLOptions, doPlantUML, doPlantUMLServer, doPlantUMLLocal, plantumlEncode, isValidCharset, PlantUMLLocal } from './render-plantuml.js';
 export { PintoraRenderOptions, doPintora, PintoraLocal } from './render-pintora.js';

@@ -12,6 +12,7 @@ const mahabhuta = akasha.mahabhuta;
 export {
     MarkdownITMermaidPlugin,
     MarkdownITPlantUMLPlugin,
+    MarkdownITPintoraPlugin,
     MermaidPluginOptions
 } from './markdown-it.js';
 
