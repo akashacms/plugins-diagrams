@@ -1,3 +1,4 @@
+import * as akasha from 'akasharender';
 /**
  * Register the named TTF/OTF font files for text measurement.
  * Suppresses the automatic system font registration - the
@@ -66,4 +67,18 @@ export type MermaidRenderOptions = {
     fontFNs?: string[];
 };
 export declare function doMermaid(options: MermaidRenderOptions): Promise<void>;
+/**
+ * Handle converting a single Mermaid diagram for display
+ * in a document, from the <diagrams-mermaid> element.
+ *
+ * The diagram is either inline in the element body or in
+ * the file named by the input-file attribute.  With an
+ * output-file attribute the SVG is written to that file
+ * and referenced with <img>; without it the SVG is
+ * embedded inline in the generated HTML.
+ */
+export declare class MermaidLocal extends akasha.CustomElement {
+    get elementName(): string;
+    process($element: any, metadata: any, dirty: Function): Promise<string>;
+}
 //# sourceMappingURL=render-mermaid.d.ts.map
