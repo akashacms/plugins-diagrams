@@ -4,6 +4,10 @@ import {
     registerMermaidFonts,
     renderMermaidSvg
 } from './render-mermaid.js';
+import {
+    KaTeXOptions,
+    renderKaTeXHtml
+} from './render-katex.js';
 
 export type MermaidPluginOptions = {
     /**
@@ -87,6 +91,73 @@ ${code}
                 return `
 <div class="diagrams-render-error">
 <span class="diagrams-title">Mermaid threw error ${encode(err.message)}</span>
+<code class="diagrams-error-input"><pre>${encode(code)}</pre></code>
+</div>
+`;
+            }
+        }
+        return defaultRenderer(tokens, idx, mdOptions, env, self);
+    }
+}
+
+export type KaTeXPluginOptions = KaTeXOptions;
+
+/**
+ * Add KaTeX support to Markdown-IT such that ```math .. ``` (or
+ * ```katex .. ```) is rendered to inline HTML markup using the
+ * KaTeX renderToString function.
+ *
+ * Rendering is synchronous and happens in-process, so the markup
+ * is embedded directly in the generated HTML.  No intermediate
+ * files are produced.  The math is rendered in display (block)
+ * mode.
+ *
+ * The generated markup requires the KaTeX stylesheet.  The
+ * DiagramsPlugin adds it to AkashaCMS projects when configured
+ * with a katex options object; outside AkashaCMS include
+ * katex/dist/katex.min.css in the page yourself.
+ *
+ * As with the Mermaid plugin, text following the language name
+ * (```math A caption) becomes the figure caption.
+ *
+ * @param md
+ * @param opts
+ */
+export function MarkdownITKaTeXPlugin(md, opts?: KaTeXPluginOptions) {
+
+    const options = opts ?? {};
+
+    const defaultRenderer = md.renderer.rules.fence.bind(md.renderer.rules);
+
+    md.renderer.rules.fence = (tokens, idx, mdOptions, env, self) => {
+        const token = tokens[idx];
+        const lang = token.info.trim().split(/\s+/)[0];
+        if (lang === 'math' || lang === 'katex') {
+            const code = token.content.replace(/^\n|\n$/g, '');
+            const title = token.info.trim()
+                    .slice(lang.length).trim();
+
+            try {
+                const html = renderKaTeXHtml(code, {
+                    displayMode: true,
+                    output: options.output,
+                    macros: options.macros
+                });
+                const cap = title !== ''
+                    ? `<figcaption>${encode(title)}</figcaption>`
+                    : '';
+                return `<figure class="diagrams-katex">
+${html}
+${cap}
+</figure>
+`;
+            } catch (err) {
+                console.error(`KaTeX threw error ${err.message}
+${code}
+`);
+                return `
+<div class="diagrams-render-error">
+<span class="diagrams-title">KaTeX threw error ${encode(err.message)}</span>
 <code class="diagrams-error-input"><pre>${encode(code)}</pre></code>
 </div>
 `;

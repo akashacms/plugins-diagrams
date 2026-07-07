@@ -1,3 +1,4 @@
+import { KaTeXOptions } from './render-katex.js';
 export type MermaidPluginOptions = {
     /**
      * TTF/OTF font files to register for text measurement.
@@ -27,6 +28,29 @@ export type MermaidPluginOptions = {
  * @param opts
  */
 export declare function MarkdownITMermaidPlugin(md: any, opts?: MermaidPluginOptions): void;
+export type KaTeXPluginOptions = KaTeXOptions;
+/**
+ * Add KaTeX support to Markdown-IT such that ```math .. ``` (or
+ * ```katex .. ```) is rendered to inline HTML markup using the
+ * KaTeX renderToString function.
+ *
+ * Rendering is synchronous and happens in-process, so the markup
+ * is embedded directly in the generated HTML.  No intermediate
+ * files are produced.  The math is rendered in display (block)
+ * mode.
+ *
+ * The generated markup requires the KaTeX stylesheet.  The
+ * DiagramsPlugin adds it to AkashaCMS projects when configured
+ * with a katex options object; outside AkashaCMS include
+ * katex/dist/katex.min.css in the page yourself.
+ *
+ * As with the Mermaid plugin, text following the language name
+ * (```math A caption) becomes the figure caption.
+ *
+ * @param md
+ * @param opts
+ */
+export declare function MarkdownITKaTeXPlugin(md: any, opts?: KaTeXPluginOptions): void;
 /**
  * Add Pintora support to Markdown-IT such that ```pintora .. ```
  * is rendered to inline SVG.

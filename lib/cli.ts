@@ -8,7 +8,7 @@ import util from 'node:util';
 
 // import packageConfig from '../package.json' with { type: 'json' }; 
 
-import { doPlantUMLOptions, doPlantUML, isValidCharset, PintoraRenderOptions, doPintora, MermaidRenderOptions, doMermaid } from './index.js';
+import { doPlantUMLOptions, doPlantUML, isValidCharset, PintoraRenderOptions, doPintora, MermaidRenderOptions, doMermaid, KaTeXRenderOptions, doKaTeX, renderKaTeXHtml } from './index.js';
 
 import { Command } from 'commander';
 const program = new Command();
@@ -408,6 +408,58 @@ program
         }
 
         await doMermaid(opts);
+    });
+
+program
+    .command('katex')
+    .description('Render TeX math files to KaTeX HTML markup')
+    .option('--input-file <inputFN>', 'Path for document to render')
+    .option('--output-file <outputFN>', 'Path for rendered HTML fragment')
+    .option('--inline', 'Render in inline mode rather than display (block) mode')
+    .option('--format <format>', 'Markup to emit: html, mathml, or htmlAndMathml')
+    .option('--macros <macrosFN>', 'Path for a JSON file defining custom macros')
+    .action(async (cmdObj) => {
+        const opts: KaTeXRenderOptions = {
+            code: '',
+            outputFN: ''
+        };
+
+        if (typeof cmdObj.inputFile === 'string') {
+            opts.code = await fsp.readFile(cmdObj.inputFile, 'utf-8');
+        } else {
+            throw new Error('No input file specified');
+        }
+
+        if ('inline' in cmdObj) {
+            opts.displayMode = !cmdObj.inline;
+        }
+
+        if (typeof cmdObj.format === 'string') {
+            if (
+                cmdObj.format === 'html'
+             || cmdObj.format === 'mathml'
+             || cmdObj.format === 'htmlAndMathml'
+            ) {
+                opts.output = cmdObj.format;
+            } else {
+                throw new Error(`Invalid format ${util.inspect(cmdObj.format)} - use html, mathml, or htmlAndMathml`);
+            }
+        }
+
+        if (typeof cmdObj.macros === 'string') {
+            opts.macros = JSON.parse(
+                await fsp.readFile(cmdObj.macros, 'utf-8'));
+        }
+
+        // When no --output-file is given the rendered markup
+        // is written to stdout, so the command can be used in
+        // a pipeline.
+        if (typeof cmdObj.outputFile === 'string') {
+            opts.outputFN = cmdObj.outputFile;
+            await doKaTeX(opts);
+        } else {
+            process.stdout.write(renderKaTeXHtml(opts.code, opts));
+        }
     });
 
 program.parse();

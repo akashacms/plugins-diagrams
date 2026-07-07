@@ -1,6 +1,6 @@
 # @akashacms/diagram-makers
 
-Process PlantUML, Mermaid, or Pintora, diagrams and either convert into an output file, or embed as HTML in a document.
+Process PlantUML, Mermaid, or Pintora, diagrams, as well as KaTeX math, and either convert into an output file, or embed as HTML in a document.
 
 ## Supported diagramming systems
 
@@ -18,7 +18,9 @@ Refer to the Mermaid website for language documentation.
 
 These diagrams are rendered in JavaScript using the Pintora package.
 
-**NOTE**: It was intended that this package also support KaTeX.  Those who are interested (or not) should see [the issue queue entry](https://github.com/akashacms/plugins-diagrams/issues/7) for this task.
+**KaTeX** -- https://katex.org/
+
+TeX math expressions are rendered to HTML markup, in-process, using the KaTeX `renderToString` function.  No browser or child process is involved.  The generated markup requires the KaTeX stylesheet, discussed in the KaTeX sections below.
 
 ## VERSION NOTE - 0.10
 
@@ -298,7 +300,43 @@ $ npx diagram-makers mermaid \
 
 For the font to take effect, the `fontFamily` in the config file (or the theme default) should name the font family, such as `"fontFamily": "Roboto, sans-serif"`.  The first registered font also serves as the fallback for generic families like `sans-serif`.
 
-<!-- ## USAGE - CLI - KaTeX -->
+## USAGE - CLI - KaTeX
+
+The package includes the following CLI command to render TeX math to KaTeX HTML markup.
+
+```shell
+$ npx diagram-makers katex --help
+Usage: diagram-makers katex [options]
+
+Render TeX math files to KaTeX HTML markup
+
+Options:
+  --input-file <inputFN>    Path for document to render
+  --output-file <outputFN>  Path for rendered HTML fragment
+  --inline                  Render in inline mode rather than display (block)
+                            mode
+  --format <format>         Markup to emit: html, mathml, or htmlAndMathml
+  --macros <macrosFN>       Path for a JSON file defining custom macros
+  -h, --help                display help for command
+```
+
+The input file contains a TeX math expression, and the output is an HTML fragment.  When `--output-file` is not given, the markup is written to standard output, so the command can be used in a pipeline:
+
+```shell
+$ npx diagram-makers katex --input-file eq.tex > eq.html
+```
+
+By default the math is rendered in display (block) mode; the `--inline` option renders inline-mode markup instead.
+
+The `--format` option selects the markup KaTeX emits: `html`, `mathml`, or `htmlAndMathml` (the default, which includes MathML alongside the HTML for accessibility).
+
+The `--macros` option names a JSON file mapping macro names to their expansions, for example:
+
+```json
+{ "\\RR": "\\mathbb{R}" }
+```
+
+Displaying the generated markup (except for pure `mathml`) requires the KaTeX stylesheet (`katex/dist/katex.min.css`) in the page.
 
 ## API - PlantUML
 
@@ -386,9 +424,38 @@ await doMermaid({
 
 Rendering happens in-process through [mermaid-wasm-renderer](https://github.com/akashacms/mermaid-wasm-renderer) - no browser or child process is involved.  Rendering errors, such as invalid diagram syntax or an unknown theme name, are thrown as ordinary `Error` objects.
 
+## API - KaTeX
+
+The `renderKaTeXHtml` function renders a TeX math expression to a KaTeX HTML string:
+
+```js
+import { renderKaTeXHtml } from '@akashacms/diagram-makers';
+
+const html = renderKaTeXHtml('c = \\pm\\sqrt{a^2 + b^2}');
+```
+
+The optional second parameter is a `KaTeXOptions` object:
+
+* `displayMode` - Optional.  Render in display (block) mode, centered on its own line.  Default: `true`.  Set `false` for inline-mode markup.
+* `output` - Optional.  The markup to emit: `htmlAndMathml` (the default, which includes MathML alongside the HTML for accessibility), `html`, or `mathml`.
+* `macros` - Optional.  An object mapping macro names to their expansions, such as `{ "\\RR": "\\mathbb{R}" }`.
+
+The `doKaTeX` function renders to a file instead, taking a `KaTeXRenderOptions` object which adds `code` (the TeX math text) and `outputFN` (the file to write the HTML fragment into) to the options above:
+
+```js
+import { doKaTeX } from '@akashacms/diagram-makers';
+
+await doKaTeX({
+  code: 'c = \\pm\\sqrt{a^2 + b^2}',
+  outputFN: '/path/to/destination/eq.html'
+});
+```
+
+Rendering is synchronous and happens in-process using the KaTeX [renderToString](https://katex.org/docs/api) function.  Invalid TeX throws `katex.ParseError`.  Displaying the generated markup requires the KaTeX stylesheet (`katex/dist/katex.min.css`) in the page.
+
 ## Usage - AkashaCMS project
 
-The `@akashacms/diagram-makers` package includes an AkashaCMS plugin, as well as Markdown-IT plugins supporting Mermaid, PlantUML, and Pintora code fences.
+The `@akashacms/diagram-makers` package includes an AkashaCMS plugin, as well as Markdown-IT plugins supporting Mermaid, PlantUML, Pintora, and KaTeX code fences.
 
 Setup, configuration:
 
@@ -397,10 +464,15 @@ import {
     DiagramsPlugin,
     MarkdownITMermaidPlugin,
     MarkdownITPlantUMLPlugin,
-    MarkdownITPintoraPlugin
+    MarkdownITPintoraPlugin,
+    MarkdownITKaTeXPlugin
 } from '@akashacms/diagram-makers';
 
-config.use(DiagramsPlugin);
+config.use(DiagramsPlugin, {
+    // Enables KaTeX support - adds the KaTeX stylesheet
+    // and fonts to the project
+    katex: {}
+});
 
 config.findRendererName('.html.md')
 .use(MarkdownITMermaidPlugin, {
@@ -410,7 +482,11 @@ config.findRendererName('.html.md')
     fontFNs: [ '/path/to/Roboto.ttf' ]
 })
 .use(MarkdownITPlantUMLPlugin)
-.use(MarkdownITPintoraPlugin);
+.use(MarkdownITPintoraPlugin)
+.use(MarkdownITKaTeXPlugin, {
+    // All options are optional
+    macros: { "\\RR": "\\mathbb{R}" }
+});
 ```
 
 The options for `MarkdownITMermaidPlugin` are:
@@ -562,6 +638,93 @@ In other words, within a 3-backtick fence labeled with the language `pintora`, y
 A figure caption can be included by adding a space after `pintora` then adding the caption text.
 
 Behind the scenes the fence is converted into a `<diagrams-pintora>` element with no `output-file`, which is then rendered to inline SVG as described in the previous section.  Because Pintora rendering is asynchronous while Markdown-IT rendering is synchronous, the actual rendering happens during Mahabhuta processing.  Consequently this plugin requires the AkashaCMS rendering pipeline with `DiagramsPlugin` configured - unlike `MarkdownITMermaidPlugin`, it does not work with standalone Markdown-IT.
+
+### KaTeX math in an AkashaCMS project
+
+In a document the `<diagrams-katex>` tag is used for rendering a single TeX math expression to KaTeX HTML markup.
+
+The math text can be used inline:
+
+```html
+<diagrams-katex caption="Pythagoras">
+c = \pm\sqrt{a^2 + b^2}
+</diagrams-katex>
+```
+
+Or, the math text can be in an external file:
+
+```html
+<diagrams-katex input-file="./eq.tex"/>
+```
+
+As with the other diagram types, the `input-file` path must be a virtual path within either an `assets` or `documents` directory.  An absolute pathname is relative to the root of the virtual filespace, while a relative pathname is relative to the file being rendered.
+
+Unlike the diagram elements, there is no `output-file` mode - the rendered KaTeX markup is HTML, not an image that could be referenced with `<img>`, so it is always embedded inline in the generated HTML.  Specifying `output-file` is an error.
+
+By default the math is rendered in display (block) mode, wrapped in a `<figure>`:
+
+```html
+<figure id="..." class="diagrams-katex ..." title="...">
+<span class="katex-display"> ... </span>
+<figcaption>...</figcaption>
+</figure>
+```
+
+The `id`, `class`, `title`, and `caption` attributes pass into the generated HTML as shown.
+
+With the `inline` property (not attribute), the math is instead rendered in inline mode and wrapped in a `<span>`, suitable for use within a paragraph:
+
+```html
+<p>The set <diagrams-katex inline>x \in \RR</diagrams-katex> is uncountable.</p>
+```
+
+To enable KaTeX support, supply a `katex` options object (even an empty one) when configuring the plugin:
+
+```js
+config.use(DiagramsPlugin, {
+    katex: {
+        // All options are optional
+        output: 'htmlAndMathml',
+        macros: { "\\RR": "\\mathbb{R}" }
+    }
+});
+```
+
+The options are:
+
+* `output` - Optional.  The markup KaTeX emits: `htmlAndMathml` (the default, which includes MathML alongside the HTML for accessibility), `html`, or `mathml`.
+* `macros` - Optional.  An object mapping macro names to their expansions.
+
+These options apply to every `<diagrams-katex>` element in the project.
+
+When the `katex` options object is present, the KaTeX stylesheet and fonts are added to the project as assets under `/vendor/katex/`, and the stylesheet is added to every page.  They are sizable, so this happens only for projects that opt in this way.  KaTeX's default `htmlAndMathml` output includes MathML, so the markup is accessible to screen readers without further arrangement.
+
+If the math fails to render, for example from a TeX syntax error, an error message is printed on the console, and the generated HTML contains a `<div class="diagrams-render-error">` describing the error along with the math text.
+
+### KaTeX code fences in Markdown documents
+
+With `MarkdownITKaTeXPlugin` added to Markdown-IT as shown above, a TeX math expression can be written in a code fence labeled `math` or `katex`, and is rendered to inline KaTeX markup in display (block) mode:
+
+    ```math optional caption goes here
+    c = \pm\sqrt{a^2 + b^2}
+    ```
+
+You may also use a three-tilde fence (`~~~math`) if you prefer.
+
+A figure caption can be included by adding a space after `math` (or `katex`) then adding the caption text.
+
+Rendering is synchronous and happens directly in the Markdown-IT renderer rule - like `MarkdownITMermaidPlugin`, this plugin also works with standalone Markdown-IT.  The generated HTML is:
+
+```html
+<figure class="diagrams-katex">
+<span class="katex-display"> ... </span>
+<figcaption>...</figcaption>
+</figure>
+```
+
+The plugin options are the same `output` and `macros` options described in the previous section.
+
+The generated markup requires the KaTeX stylesheet.  In an AkashaCMS project, configure `DiagramsPlugin` with a `katex` options object as shown in the previous section.  Outside AkashaCMS, include `katex/dist/katex.min.css` in the page yourself, for example from a CDN as described in the [KaTeX documentation](https://katex.org/docs/browser).
 
 ### Inline Mermaid diagrams in an AkashaCMS project
 

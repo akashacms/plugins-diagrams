@@ -2,6 +2,7 @@
 
 import path from 'node:path';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 
 const pluginName = '@akashacms/diagram-makers';
 
@@ -13,12 +14,16 @@ export {
     MarkdownITMermaidPlugin,
     MarkdownITPlantUMLPlugin,
     MarkdownITPintoraPlugin,
-    MermaidPluginOptions
+    MarkdownITKaTeXPlugin,
+    MermaidPluginOptions,
+    KaTeXPluginOptions
 } from './markdown-it.js';
 
 import { MermaidLocal } from './render-mermaid.js';
 import { PlantUMLLocal } from './render-plantuml.js';
 import { PintoraLocal } from './render-pintora.js';
+import { KaTeXLocal } from './render-katex.js';
+import { KaTeXOptions } from './render-katex.js';
 
 export {
     MermaidRenderOptions,
@@ -44,6 +49,14 @@ export {
     doPintora,
     PintoraLocal
 } from './render-pintora.js';
+
+export {
+    KaTeXOptions,
+    KaTeXRenderOptions,
+    doKaTeX,
+    renderKaTeXHtml,
+    KaTeXLocal
+} from './render-katex.js';
 
 export type DiagramsPluginOptions = {
     /**
@@ -75,6 +88,16 @@ export type DiagramsPluginOptions = {
          */
         fontFNs?: string[];
     };
+
+    /**
+     * Options for rendering <diagrams-katex> elements.  When this
+     * object is present (even empty), the KaTeX stylesheet and
+     * fonts are added to the project as assets.  The rendering
+     * options (displayMode is ignored - it is controlled by the
+     * inline property on the element) apply to every
+     * <diagrams-katex> element in the project.
+     */
+    katex?: KaTeXOptions;
 };
 
 export class DiagramsPlugin extends Plugin {
@@ -103,6 +126,28 @@ export class DiagramsPlugin extends Plugin {
         config.addStylesheet({
             href: '/vendor/@akashacms/diagram-makers/style.css'
         });
+        // The KaTeX stylesheet and fonts are sizable, so they
+        // are added only for projects that opt in to KaTeX
+        // rendering by supplying a katex options object.
+        if (this.options.katex) {
+            const katexDist = path.dirname(
+                createRequire(import.meta.url)
+                    .resolve('katex/dist/katex.min.css'));
+            config.addAssetsDir({
+                src: katexDist,
+                dest: 'vendor/katex',
+                // Only the stylesheet and fonts are needed for
+                // server-rendered math - not the browser-side
+                // JS bundles.
+                ignore: [
+                    '**/*.js', '**/*.mjs',
+                    '**/*.d.ts', 'README.md'
+                ]
+            });
+            config.addStylesheet({
+                href: '/vendor/katex/katex.min.css'
+            });
+        }
     }
 
     get config() { return this.#config; }
@@ -118,5 +163,6 @@ export function mahabhutaArray(
     ret.addMahafunc(new MermaidLocal(config, akasha, plugin));
     ret.addMahafunc(new PlantUMLLocal(config, akasha, plugin));
     ret.addMahafunc(new PintoraLocal(config, akasha, plugin));
+    ret.addMahafunc(new KaTeXLocal(config, akasha, plugin));
     return ret;
 };

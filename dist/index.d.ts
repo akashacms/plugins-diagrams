@@ -1,9 +1,11 @@
 import * as akasha from 'akasharender';
 import { Plugin } from 'akasharender/dist/Plugin.js';
-export { MarkdownITMermaidPlugin, MarkdownITPlantUMLPlugin, MarkdownITPintoraPlugin, MermaidPluginOptions } from './markdown-it.js';
+export { MarkdownITMermaidPlugin, MarkdownITPlantUMLPlugin, MarkdownITPintoraPlugin, MarkdownITKaTeXPlugin, MermaidPluginOptions, KaTeXPluginOptions } from './markdown-it.js';
+import { KaTeXOptions } from './render-katex.js';
 export { MermaidRenderOptions, doMermaid, renderMermaidSvg, registerMermaidFonts, adaptInlineSvg, MermaidLocal } from './render-mermaid.js';
 export { doPlantUMLOptions, doPlantUML, doPlantUMLServer, doPlantUMLLocal, plantumlEncode, isValidCharset, PlantUMLLocal } from './render-plantuml.js';
 export { PintoraRenderOptions, doPintora, PintoraLocal } from './render-pintora.js';
+export { KaTeXOptions, KaTeXRenderOptions, doKaTeX, renderKaTeXHtml, KaTeXLocal } from './render-katex.js';
 export type DiagramsPluginOptions = {
     /**
      * Options for rendering <diagrams-mermaid> elements
@@ -31,6 +33,15 @@ export type DiagramsPluginOptions = {
          */
         fontFNs?: string[];
     };
+    /**
+     * Options for rendering <diagrams-katex> elements.  When this
+     * object is present (even empty), the KaTeX stylesheet and
+     * fonts are added to the project as assets.  The rendering
+     * options (displayMode is ignored - it is controlled by the
+     * inline property on the element) apply to every
+     * <diagrams-katex> element in the project.
+     */
+    katex?: KaTeXOptions;
 };
 export declare class DiagramsPlugin extends Plugin {
     #private;
