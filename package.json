@@ -42,5 +42,12 @@
   },
   "peerDependencies": {
     "akasharender": "akashacms/akasharender#0.10"
+  },
+  "allowScripts": {
+    "canvas@3.2.3": true
+  },
+  "overrides": {
+    "cheerio": { "encoding-sniffer": "^1.x" },
+    "jsdom@<29": "^29.x"
   }
 }
